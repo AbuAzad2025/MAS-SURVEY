@@ -39,14 +39,6 @@ def base_url():
     return os.environ.get('TEST_BASE_URL', 'http://localhost:5000')
 
 
-@pytest.fixture(autouse=True)
-def reset_app_state(app):
-    """Reset application state between tests."""
-    yield
-    # Cleanup after test
-    pass
-
-
 @pytest.fixture(scope='session')
 def app():
     """Create Flask application for testing."""
