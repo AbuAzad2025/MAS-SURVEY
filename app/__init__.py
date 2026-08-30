@@ -19,6 +19,15 @@ def create_app(config_name='default'):
                 static_url_path='/static')
     app.config.from_object(config[config_name])
     
+    # Handle testing config - use temp file for testing
+    if config_name == 'testing':
+        import tempfile
+        import atexit
+        fd, db_path = tempfile.mkstemp(suffix='.db')
+        os.close(fd)
+        app.config['DATABASE'] = db_path
+        atexit.register(lambda: os.unlink(db_path) if os.path.exists(db_path) else None)
+    
     db_path = app.config.get('DATABASE', '')
     if db_path and db_path != ':memory:':
         db_folder = os.path.dirname(db_path)

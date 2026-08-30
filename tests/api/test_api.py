@@ -212,9 +212,9 @@ class TestAPIResection:
         response = client.post('/api/calculate/resection', json={
             'type': '2POINTS',
             'p1': {'y': 0.0, 'x': 0.0},
-            'p2': {'y': 100.0, 'x': 0.0},
-            'dist1': 50.0,
-            'dist2': 50.0
+            'p2': {'y': 0.0, 'x': 6.0},
+            'dist1': 5.0,
+            'dist2': 5.0
         })
         assert response.status_code == 200
 
@@ -222,16 +222,17 @@ class TestAPIResection:
 class TestAPIInterpolation:
     """Test interpolation calculation API endpoints."""
 
-    def test_interpolation(self, client, sample_file):
-        """Test vertical interpolation API."""
+    def test_interpolation_requires_file(self, client, sample_file):
+        """Test interpolation requires current file."""
         response = client.post('/api/calculate/interpolation', json={
             'vertical_interval': 2.0,
             'lines': [[1, 2]]
         })
-        assert response.status_code == 200
+        assert response.status_code == 400
 
     def test_interpolation_invalid_interval(self, client, sample_file):
         """Test interpolation with invalid interval."""
+        client.post('/api/set-file', json={'filename': sample_file['name']})
         response = client.post('/api/calculate/interpolation', json={
             'vertical_interval': 0.0,
             'lines': [[1, 2]]

@@ -23,7 +23,7 @@ class ProductionConfig(Config):
 class TestingConfig(Config):
     """Testing configuration."""
     TESTING = True
-    DATABASE = ':memory:'
+    DATABASE = ''  # Will be set by app factory
 
 
 config = {

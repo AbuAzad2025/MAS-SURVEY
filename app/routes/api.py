@@ -666,7 +666,7 @@ def calculate_interpolation():
         return error_response('No lines specified')
     
     try:
-        from app.shared.models import SurveyPoint
+        from app.shared.models.models import SurveyPoint
         filename = session.get('current_file')
         
         if not filename:
