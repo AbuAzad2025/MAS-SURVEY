@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - Surveying Systems Suite{% endblock %}
+
+{% block extra_css %}
+<style>
+.landing-page .header {
+    padding: 40px 0;
+}
+
+.landing-page .header-title {
+    font-size: 11px;
+    letter-spacing: 12px;
+}
+
+.landing-page .header-company {
+    font-size: 28px;
+    letter-spacing: 8px;
+    margin-top: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="landing-container landing-page">
+    
+    <div class="landing-intro">
+        <h2>Professional Surveying Solutions</h2>
+        <p>Advanced computerized systems for land surveying, topography, and geodetic calculations</p>
+    </div>
+    
+    <div class="programs-grid">
+        
+        <!-- MAS Program - Active -->
+        <a href="{{ url_for('mas.main.mas_menu') }}" class="program-card active">
+            <span class="card-status active">ACTIVE</span>
+            <span class="card-icon">📐</span>
+            <span class="card-name">MAS</span>
+            <span class="card-desc">Surveying Computerized Systems</span>
+            <span class="card-number">01</span>
+        </a>
+        
+        <!-- Coming Soon Programs -->
+        <div class="program-card coming-soon">
+            <span class="card-status coming-soon">COMING SOON</span>
+            <span class="card-icon">📊</span>
+            <span class="card-name">STATS</span>
+            <span class="card-desc">Statistical Analysis Module</span>
+            <span class="card-number">02</span>
+        </div>
+        
+        <div class="program-card coming-soon">
+            <span class="card-status coming-soon">COMING SOON</span>
+            <span class="card-icon">🗺️</span>
+            <span class="card-name">TOPO</span>
+            <span class="card-desc">Topography & Contour Mapping</span>
+            <span class="card-number">03</span>
+        </div>
+        
+        <div class="program-card coming-soon">
+            <span class="card-status coming-soon">COMING SOON</span>
+            <span class="card-icon">🛣️</span>
+            <span class="card-name">ROADS</span>
+            <span class="card-desc">Road Design & Alignment</span>
+            <span class="card-number">04</span>
+        </div>
+        
+        <div class="program-card coming-soon">
+            <span class="card-status coming-soon">COMING SOON</span>
+            <span class="card-icon">🏗️</span>
+            <span class="card-name">STRUCT</span>
+            <span class="card-desc">Structural Calculations</span>
+            <span class="card-number">05</span>
+        </div>
+        
+        <div class="program-card coming-soon">
+            <span class="card-status coming-soon">COMING SOON</span>
+            <span class="card-icon">🌐</span>
+            <span class="card-name">GIS</span>
+            <span class="card-desc">GIS Integration & Mapping</span>
+            <span class="card-number">06</span>
+        </div>
+        
+    </div>
+    
+    <div class="system-info">
+        <div class="info-title">[ SYSTEM INFORMATION ]</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">SYSTEM VERSION</span>
+                <span class="info-value">SUITE v1.0</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">LICENSED TO</span>
+                <span class="info-value">ALRAFIDEEN</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">CONTACT</span>
+                <span class="info-value">0562150193</span>
+            </div>
+        </div>
+    </div>
+    
+</div>
+{% endblock %}

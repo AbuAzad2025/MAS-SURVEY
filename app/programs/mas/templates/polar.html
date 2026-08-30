@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - المساحة بالشعاع{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">[ P O L A R &nbsp; S U R V E Y ]</div>
+    
+    <div class="card-body">
+        <div class="info-bar" style="margin-bottom: 15px;">
+            <div>
+                <span class="info-label">FILE: </span>
+                <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
+            </div>
+        </div>
+        
+        <div class="menu-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 15px;">
+            <a href="#" onclick="showPolarType(1)" class="menu-item">
+                <div class="text">1- DISTOMAT</div>
+            </a>
+            <a href="#" onclick="showPolarType(2)" class="menu-item">
+                <div class="text">2- TACHEOMETRY</div>
+            </a>
+            <a href="#" onclick="showPolarType(3)" class="menu-item">
+                <div class="text">3- AZIMUTH-DISTANCE</div>
+            </a>
+        </div>
+        
+        <div id="polar-input" class="dos-box" style="display: none;">
+            <div class="dos-header" id="polar-title">DISTOMAT MODE</div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                <div class="form-group">
+                    <label>Station Point No:</label>
+                    <input type="number" id="station-point" class="form-control" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Back Azimuth:</label>
+                    <input type="number" id="back-azimuth" class="form-control" value="0" step="0.0001">
+                </div>
+            </div>
+            
+            <table class="data-table" id="polar-table">
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Distance</th>
+                        <th>Angle</th>
+                        <th>V.Angle</th>
+                        <th>H</th>
+                    </tr>
+                </thead>
+                <tbody id="polar-tbody">
+                    <tr>
+                        <td><input type="number" class="form-control" name="no[]" value="1"></td>
+                        <td><input type="number" class="form-control" name="dist[]" step="0.01"></td>
+                        <td><input type="number" class="form-control" name="angle[]" step="0.0001"></td>
+                        <td><input type="number" class="form-control" name="vangle[]" step="0.0001"></td>
+                        <td><input type="number" class="form-control" name="h[]" step="0.01"></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 10px;">
+                <button onclick="addPolarRow()" class="btn">+ ADD ROW</button>
+                <button onclick="savePolarPoints()" class="btn btn-primary">[ SAVE ]</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{{ '/' }}" class="btn">[ BACK TO MAIN MENU ]</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentPolarType = 1;
+
+function showPolarType(type) {
+    currentPolarType = type;
+    document.getElementById('polar-input').style.display = 'block';
+    const titles = ['', 'DISTOMAT MODE', 'TACHEOMETRY MODE', 'AZIMUTH-DISTANCE MODE'];
+    document.getElementById('polar-title').textContent = titles[type];
+}
+
+function addPolarRow() {
+    const tbody = document.getElementById('polar-tbody');
+    const rows = tbody.querySelectorAll('tr');
+    const nextNo = rows.length + 1;
+    
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td><input type="number" class="form-control" name="no[]" value="${nextNo}"></td>
+        <td><input type="number" class="form-control" name="dist[]" step="0.01"></td>
+        <td><input type="number" class="form-control" name="angle[]" step="0.0001"></td>
+        <td><input type="number" class="form-control" name="vangle[]" step="0.0001"></td>
+        <td><input type="number" class="form-control" name="h[]" step="0.01"></td>
+    `;
+    tbody.appendChild(row);
+}
+
+async function savePolarPoints() {
+    const stationNo = parseInt(document.getElementById('station-point').value) || 1;
+    const backAzimuth = parseFloat(document.getElementById('back-azimuth').value) || 0;
+    
+    const observations = [];
+    const tbody = document.getElementById('polar-tbody');
+    const rows = tbody.querySelectorAll('tr');
+    
+    rows.forEach((row) => {
+        const inputs = row.querySelectorAll('input');
+        const no = parseInt(inputs[0].value) || 0;
+        const dist = parseFloat(inputs[1].value) || 0;
+        const angle = parseFloat(inputs[2].value) || 0;
+        const vangle = parseFloat(inputs[3].value) || 0;
+        const h = parseFloat(inputs[4].value) || 0;
+        
+        if (dist > 0) {
+            observations.push({
+                no: no,
+                distance: dist,
+                angle: angle,
+                vangle: vangle,
+                h: h
+            });
+        }
+    });
+    
+    if (observations.length === 0) {
+        MAS.showAlert('No points to save', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/calculate/polar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                type: currentPolarType === 1 ? 'DISTOMAT' : (currentPolarType === 2 ? 'TACHEOMETRY' : 'AZIMUTH_DISTANCE'),
+                station_no: stationNo,
+                back_azimuth: backAzimuth,
+                observations: observations
+            })
+        });
+        
+        if (!response.ok) throw new Error('Polar calculation failed');
+        
+        const result = await response.json();
+        
+        const points = result.results.map(r => ({
+            no: r.no,
+            y: r.y,
+            x: r.x,
+            h: r.h
+        }));
+        
+        MAS.savePoints(points, function(saveResult) {
+            if (saveResult.count > 0) {
+                MAS.showAlert(saveResult.count + ' points saved successfully', 'success');
+            }
+        });
+    } catch (error) {
+        MAS.showAlert('Error: ' + error.message, 'error');
+    }
+}
+
+// Show first type by default
+showPolarType(1);
+</script>
+{% endblock %}

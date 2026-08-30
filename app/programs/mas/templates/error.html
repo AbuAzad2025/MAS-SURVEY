@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - خطأ{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header" style="background: #330000; border-color: #ff0000;">[ E R R O R ]</div>
+    
+    <div class="card-body" style="text-align: center; padding: 40px;">
+        <div style="font-size: 48px; margin-bottom: 20px; color: #ff0000;">!</div>
+        <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px;">{{ message }}</p>
+        <a href="{{ '/' }}" class="btn btn-primary">[ BACK TO MAIN MENU ]</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,656 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - الرسم{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">[ P L O T T I N G ]</div>
+    
+    <div class="card-body">
+        <div class="info-bar" style="margin-bottom: 15px;">
+            <div>
+                <span class="info-label">FILE: </span>
+                <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
+            </div>
+        </div>
+        
+        <div class="menu-grid" style="grid-template-columns: repeat(2, 1fr);">
+            <a href="#" onclick="showPlotOption(2)" class="menu-item">
+                <div class="number">2</div>
+                <div class="text">PRINT THE HEADER</div>
+            </a>
+            <a href="#" onclick="showPlotOption(3)" class="menu-item">
+                <div class="number">3</div>
+                <div class="text">PRINT COORDINATES</div>
+            </a>
+            <a href="#" onclick="showPlotOption(4)" class="menu-item">
+                <div class="number">4</div>
+                <div class="text">PRINT FREE NUMBERS</div>
+            </a>
+            <a href="#" onclick="showPlotOption(5)" class="menu-item">
+                <div class="number">5</div>
+                <div class="text">GRID LIMITS</div>
+            </a>
+            <a href="#" onclick="showPlotOption(6)" class="menu-item">
+                <div class="number">6</div>
+                <div class="text">INTERPOLATION</div>
+            </a>
+            <a href="#" onclick="showPlotOption(7)" class="menu-item">
+                <div class="number">7</div>
+                <div class="text">DRAW ON PRINTER</div>
+            </a>
+        </div>
+        
+        <div id="plot-content" style="display: none; margin-top: 20px;">
+            
+            <div id="plot-header-section" class="dos-box" style="display: none;">
+                <div class="dos-header">Header for Printing:</div>
+                <div style="margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label style="display:inline-block; width:120px;">Company:</label>
+                        <input type="text" id="h-company" class="form-control" style="width:250px;" value="SURVEYING SYSTEMS" oninput="updateHeader()">
+                    </div>
+                    <div class="form-group">
+                        <label style="display:inline-block; width:120px;">Licence:</label>
+                        <input type="text" id="h-licence" class="form-control" style="width:250px;" value="LICENCED SURVEYER No. 000" oninput="updateHeader()">
+                    </div>
+                    <div class="form-group">
+                        <label style="display:inline-block; width:120px;">Address:</label>
+                        <input type="text" id="h-address" class="form-control" style="width:250px;" value="RAMALLAH P.O.BOX 0000" oninput="updateHeader()">
+                    </div>
+                    <div class="form-group">
+                        <label style="display:inline-block; width:120px;">Telephone:</label>
+                        <input type="text" id="h-phone" class="form-control" style="width:250px;" value="0562150193" oninput="updateHeader()">
+                    </div>
+                    <div class="form-group">
+                        <label style="display:inline-block; width:120px;">Custom Text:</label>
+                        <input type="text" id="h-custom" class="form-control" style="width:250px;" value="HEADER FOR PRINTING HERE" oninput="updateHeader()">
+                    </div>
+                </div>
+                <div class="dos-header" style="margin-top:10px;">Preview:</div>
+                <pre id="header-preview" style="font-size:12px; background:#000; padding:10px; border:1px solid #00ff41; color:#00ff41;">SURVEYING SYSTEMS
+LICENCED SURVEYER No. 000
+RAMALLAH P.O.BOX 0000
+TELEPHONE: 0562150193
+HEADER FOR PRINTING HERE
+===================================================</pre>
+                <button onclick="printHeader()" class="btn" style="margin-top: 15px;">[ PRINT HEADER ]</button>
+            </div>
+            
+            <div id="plot-coordinates-section" class="dos-box" style="display: none;">
+                <div class="dos-header">PRINT COORDINATES</div>
+                <div style="margin-top: 15px;">
+                    <p style="margin-bottom: 15px;">Choose printing option:</p>
+                    <div class="menu-grid" style="grid-template-columns: repeat(3, 1fr);">
+                        <a href="#" onclick="showCoordInput(1)" class="menu-item">
+                            <div class="number">1</div>
+                            <div class="text">SINGLE POINT</div>
+                        </a>
+                        <a href="#" onclick="showCoordInput(2)" class="menu-item">
+                            <div class="number">2</div>
+                            <div class="text">GROUP OF POINTS</div>
+                        </a>
+                        <a href="#" onclick="printAllCoords()" class="menu-item">
+                            <div class="number">3</div>
+                            <div class="text">ALL POINTS</div>
+                        </a>
+                    </div>
+                    <div id="coord-single-area" style="display:none; margin-top: 20px;">
+                        <div class="form-group">
+                            <label>POINT NUMBER:</label>
+                            <input type="number" id="coord-single-no" class="form-control" value="1">
+                        </div>
+                        <button onclick="printSingleCoord()" class="btn" style="margin-top: 15px;">[ PRINT ]</button>
+                    </div>
+                    <div id="coord-group-area" style="display:none; margin-top: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div class="form-group">
+                                <label>FROM POINT:</label>
+                                <input type="number" id="coord-from" class="form-control" value="1">
+                            </div>
+                            <div class="form-group">
+                                <label>TO POINT:</label>
+                                <input type="number" id="coord-to" class="form-control" value="10">
+                            </div>
+                        </div>
+                        <button onclick="printGroupCoords()" class="btn" style="margin-top: 15px;">[ PRINT ]</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="plot-freenumbers-section" class="dos-box" style="display: none;">
+                <div class="dos-header">FREE NUMBERS</div>
+                <div style="margin-top: 15px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label>FROM POINT:</label>
+                            <input type="number" id="free-from" class="form-control" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label>TO POINT:</label>
+                            <input type="number" id="free-to" class="form-control" value="10">
+                        </div>
+                    </div>
+                    <button onclick="printFreeNumbers()" class="btn" style="margin-top: 15px;">[ PRINT ]</button>
+                </div>
+            </div>
+            
+            <div id="plot-grid-section" class="dos-box" style="display: none;">
+                <div class="dos-header">GRID LIMITS</div>
+                <div style="margin-top: 15px;">
+                    <p>Calculating grid limits...</p>
+                </div>
+            </div>
+            
+            <div id="plot-interpolation-section" class="dos-box" style="display: none;">
+                <div class="dos-header">INTERPOLATION</div>
+                <div style="margin-top: 15px;">
+                    <div class="form-group">
+                        <label>Vertical Interval (meters):</label>
+                        <input type="number" id="interp-interval" class="form-control" value="0.5" step="0.1" min="0.1">
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <h4>Lines for Interpolation:</h4>
+                        <p style="font-size: 12px; color: #888;">Enter point pairs (From Point No, To Point No)</p>
+                    </div>
+                    
+                    <table class="data-table" id="interp-lines-table">
+                        <thead>
+                            <tr>
+                                <th>From Point</th>
+                                <th>To Point</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="interp-lines-tbody">
+                            <tr>
+                                <td><input type="number" class="form-control" name="from[]" value="1"></td>
+                                <td><input type="number" class="form-control" name="to[]" value="2"></td>
+                                <td><button onclick="removeInterpLine(this)" class="btn" style="padding:2px 8px;">X</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div style="margin-top: 10px;">
+                        <button onclick="addInterpLine()" class="btn">+ ADD LINE</button>
+                        <button onclick="calculateInterpolation()" class="btn btn-primary">[ CALCULATE ]</button>
+                    </div>
+                </div>
+                
+                <div id="interp-result" class="dos-box" style="display: none; margin-top: 15px;">
+                    <div class="dos-header">Interpolation Results:</div>
+                    <div id="interp-result-content" style="max-height: 400px; overflow-y: auto;"></div>
+                    <div style="margin-top: 15px;">
+                        <button onclick="saveInterpResults()" class="btn btn-primary">[ SAVE RESULTS ]</button>
+                        <button onclick="printInterpResults()" class="btn">[ PRINT ]</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="plot-draw-section" class="dos-box" style="display: none;">
+                <div class="dos-header">DRAW ON PRINTER</div>
+                <p style="margin-top: 15px;" id="draw-message">Preparing print...</p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{{ '/' }}" class="btn">[ BACK TO MAIN MENU ]</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentPlotOption = 0;
+
+function showPlotOption(option) {
+    currentPlotOption = option;
+    
+    document.getElementById('plot-content').style.display = 'block';
+    
+    document.getElementById('plot-header-section').style.display = 'none';
+    document.getElementById('plot-coordinates-section').style.display = 'none';
+    document.getElementById('plot-freenumbers-section').style.display = 'none';
+    document.getElementById('plot-grid-section').style.display = 'none';
+    document.getElementById('plot-interpolation-section').style.display = 'none';
+    document.getElementById('plot-draw-section').style.display = 'none';
+    
+    switch(option) {
+        case 2:
+            document.getElementById('plot-header-section').style.display = 'block';
+            break;
+        case 3:
+            document.getElementById('plot-coordinates-section').style.display = 'block';
+            break;
+        case 4:
+            document.getElementById('plot-freenumbers-section').style.display = 'block';
+            break;
+        case 5:
+            document.getElementById('plot-grid-section').style.display = 'block';
+            fetchGridLimits();
+            break;
+        case 6:
+            document.getElementById('plot-interpolation-section').style.display = 'block';
+            break;
+        case 7:
+            document.getElementById('plot-draw-section').style.display = 'block';
+            fetchDrawPrint();
+            break;
+    }
+}
+
+function updateHeader() {
+    var company = document.getElementById('h-company').value;
+    var licence = document.getElementById('h-licence').value;
+    var address = document.getElementById('h-address').value;
+    var phone = document.getElementById('h-phone').value;
+    var custom = document.getElementById('h-custom').value;
+    
+    var text = company + '\n' + licence + '\n' + address + '\nTELEPHONE: ' + phone + '\n' + custom + '\n====================================================';
+    
+    document.getElementById('header-preview').textContent = text;
+}
+
+function showCoordInput(type) {
+    document.getElementById('coord-single-area').style.display = 'none';
+    document.getElementById('coord-group-area').style.display = 'none';
+    
+    if (type === 1) {
+        document.getElementById('coord-single-area').style.display = 'block';
+    } else if (type === 2) {
+        document.getElementById('coord-group-area').style.display = 'block';
+    }
+}
+
+function printHeader() {
+    var headerText = document.getElementById('header-preview').textContent;
+    var printContent = headerText + '\n\n====================================================\n';
+    
+    var printWindow = window.open('', '_blank');
+    printWindow.document.write('<!DOCTYPE html><html><head><title>Print - MAS</title>');
+    printWindow.document.write('<style>body{font-family:"Courier New",monospace;margin:20px;white-space:pre;}</style>');
+    printWindow.document.write('</head><body>' + printContent + '</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
+
+function fetchPrintData(url, postData, callback) {
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(postData)
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+        callback(data);
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        alert('Error fetching data');
+    });
+}
+
+function formatAndPrint(printData, title) {
+    var printContent = '';
+    
+    printContent += '====================================================\n';
+    printContent += 'SURVEYING SYSTEMS\n';
+    printContent += 'LICENCED SURVEYER No. 000\n';
+    printContent += 'RAMALLAH P.O.BOX 0000\n';
+    printContent += 'TELEPHONE: 0562150193\n';
+    printContent += 'HEADER FOR PRINTING HERE\n';
+    printContent += '====================================================\n';
+    
+    if (printData.header) {
+        printContent += '\nNAME OF WORK   : ' + (printData.header.name || '') + '\n';
+        printContent += 'DATE           : ' + (printData.header.date || '') + '\n';
+        printContent += 'PLACE          : ' + (printData.header.place || '') + '\n';
+        printContent += 'NAME OF FILE   : ' + (printData.header.name || '') + '\n';
+        printContent += 'NO. OF POINTS  : ' + (printData.header.no_of_points || 0) + '\n';
+        printContent += '\n====================================================\n';
+    }
+    
+    if (title) {
+        printContent += '\n' + title + '\n';
+        printContent += '====================================================\n';
+    }
+    
+    if (printData.points && printData.points.length > 0) {
+        printContent += '\nPOINT     Y - Axis      X - Axis      HEIGHT\n';
+        printContent += '-----     ---------     ---------     -------\n';
+        
+        printData.points.forEach(function(p) {
+            var yStr = p.y.toFixed(2).padStart(12);
+            var xStr = p.x.toFixed(2).padStart(12);
+            var hStr = (p.h && p.h !== 0 ? p.h.toFixed(2) : '').padStart(12);
+            printContent += p.no.toString().padStart(5) + '     ' + yStr + '     ' + xStr + '     ' + hStr + '\n';
+        });
+    }
+    
+    printContent += '\n====================================================\n';
+    
+    var printWindow = window.open('', '_blank');
+    printWindow.document.write('<!DOCTYPE html><html><head><title>Print - MAS</title>');
+    printWindow.document.write('<style>body{font-family:"Courier New",monospace;margin:20px;white-space:pre;}</style>');
+    printWindow.document.write('</head><body>' + printContent + '</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
+
+function printSingleCoord() {
+    var pointNo = parseInt(document.getElementById('coord-single-no').value) || 1;
+    fetchPrintData('/api/print/coordinates', {type: 'single', from_no: pointNo, to_no: pointNo}, function(data) {
+        formatAndPrint(data, '');
+    });
+}
+
+function printGroupCoords() {
+    var fromNo = parseInt(document.getElementById('coord-from').value) || 1;
+    var toNo = parseInt(document.getElementById('coord-to').value) || 10;
+    fetchPrintData('/api/print/coordinates', {type: 'group', from_no: fromNo, to_no: toNo}, function(data) {
+        formatAndPrint(data, '');
+    });
+}
+
+function printAllCoords() {
+    fetchPrintData('/api/print/coordinates', {type: 'all'}, function(data) {
+        formatAndPrint(data, '');
+    });
+}
+
+function printFreeNumbers() {
+    var fromNo = parseInt(document.getElementById('free-from').value) || 1;
+    var toNo = parseInt(document.getElementById('free-to').value) || 10;
+    fetchPrintData('/api/print/freenumbers', {from_no: fromNo, to_no: toNo}, function(data) {
+        data.title = 'FREE NUMBERS\nFROM POINT  ' + fromNo + '        TO POINT  ' + toNo;
+        var printContent = '';
+        
+        printContent += '====================================================\n';
+        printContent += 'SURVEYING SYSTEMS\n';
+        printContent += 'LICENCED SURVEYER No. 000\n';
+        printContent += 'RAMALLAH P.O.BOX 0000\n';
+        printContent += 'TELEPHONE: 0562150193\n';
+        printContent += 'HEADER FOR PRINTING HERE\n';
+        printContent += '====================================================\n';
+        
+        if (data.header) {
+            printContent += '\nNAME OF WORK   : ' + (data.header.name || '') + '\n';
+            printContent += 'DATE           : ' + (data.header.date || '') + '\n';
+            printContent += 'PLACE          : ' + (data.header.place || '') + '\n';
+            printContent += 'NAME OF FILE   : ' + (data.header.name || '') + '\n';
+            printContent += 'NO. OF POINTS  : ' + (data.header.no_of_points || 0) + '\n';
+            printContent += '\n====================================================\n';
+        }
+        
+        printContent += '\nFREE NUMBERS\n';
+        printContent += '====================================================\n';
+        printContent += '\nFROM POINT  ' + fromNo.toString().padStart(4) + '        TO POINT  ' + toNo.toString().padStart(4) + '\n';
+        printContent += '-----     ---------     ---------     -------\n';
+        
+        if (data.points && data.points.length > 0) {
+            data.points.forEach(function(p) {
+                var yStr = p.y.toFixed(2).padStart(12);
+                var xStr = p.x.toFixed(2).padStart(12);
+                var hStr = (p.h && p.h !== 0 ? p.h.toFixed(2) : '').padStart(12);
+                printContent += p.no.toString().padStart(5) + '     ' + yStr + '     ' + xStr + '     ' + hStr + '\n';
+            });
+        }
+        
+        printContent += '\n====================================================\n';
+        
+        var printWindow = window.open('', '_blank');
+        printWindow.document.write('<!DOCTYPE html><html><head><title>Print - MAS</title>');
+        printWindow.document.write('<style>body{font-family:"Courier New",monospace;margin:20px;white-space:pre;}</style>');
+        printWindow.document.write('</head><body>' + printContent + '</body></html>');
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+    });
+}
+
+function fetchGridLimits() {
+    fetch('/api/print/gridlimits')
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+        
+        var printContent = '';
+        
+        printContent += '====================================================\n';
+        printContent += 'SURVEYING SYSTEMS\n';
+        printContent += 'LICENCED SURVEYER No. 000\n';
+        printContent += 'RAMALLAH P.O.BOX 0000\n';
+        printContent += 'TELEPHONE: 0562150193\n';
+        printContent += 'HEADER FOR PRINTING HERE\n';
+        printContent += '====================================================\n';
+        
+        if (data.header) {
+            printContent += '\nNAME OF WORK   : ' + (data.header.name || '') + '\n';
+            printContent += 'DATE           : ' + (data.header.date || '') + '\n';
+            printContent += 'PLACE          : ' + (data.header.place || '') + '\n';
+            printContent += 'NAME OF FILE   : ' + (data.header.name || '') + '\n';
+            printContent += 'NO. OF POINTS  : ' + (data.header.no_of_points || 0) + '\n';
+            printContent += '\n====================================================\n';
+        }
+        
+        printContent += '\nGRID LIMITS\n';
+        printContent += '====================================================\n';
+        
+        if (data.grid) {
+            printContent += 'Y - West   = ' + data.grid.y_west.value.toFixed(2) + '\n';
+            printContent += 'Y - East   = ' + data.grid.y_east.value.toFixed(2) + '\n';
+            printContent += 'X - South  = ' + data.grid.x_south.value.toFixed(2) + '\n';
+            printContent += 'X - North  = ' + data.grid.x_north.value.toFixed(2) + '\n';
+        }
+        
+        printContent += '\n====================================================\n';
+        
+        var printWindow = window.open('', '_blank');
+        printWindow.document.write('<!DOCTYPE html><html><head><title>Print - MAS</title>');
+        printWindow.document.write('<style>body{font-family:"Courier New",monospace;margin:20px;white-space:pre;}</style>');
+        printWindow.document.write('</head><body>' + printContent + '</body></html>');
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        alert('Error fetching grid limits');
+    });
+}
+
+function fetchDrawPrint() {
+    fetch('/api/print/draw')
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.error === 'no_heights') {
+            document.getElementById('draw-message').textContent = 'HINT : YOUR FILE DOES NOT INCLUDE HEIGHTS ... PRESS ENTER';
+            return;
+        }
+
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+
+        formatAndPrint(data, 'ALL POINTS');
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        alert('Error fetching draw data');
+    });
+}
+
+var interpResultsData = null;
+
+function addInterpLine() {
+    var tbody = document.getElementById('interp-lines-tbody');
+    var row = document.createElement('tr');
+    row.innerHTML = `
+        <td><input type="number" class="form-control" name="from[]" value="1"></td>
+        <td><input type="number" class="form-control" name="to[]" value="2"></td>
+        <td><button onclick="removeInterpLine(this)" class="btn" style="padding:2px 8px;">X</button></td>
+    `;
+    tbody.appendChild(row);
+}
+
+function removeInterpLine(btn) {
+    var tbody = document.getElementById('interp-lines-tbody');
+    if (tbody.rows.length > 1) {
+        btn.closest('tr').remove();
+    }
+}
+
+async function calculateInterpolation() {
+    var interval = parseFloat(document.getElementById('interp-interval').value) || 0.5;
+    
+    if (interval <= 0) {
+        MAS.showAlert('Please enter a valid vertical interval', 'error');
+        return;
+    }
+    
+    var lines = [];
+    var tbody = document.getElementById('interp-lines-tbody');
+    var rows = tbody.querySelectorAll('tr');
+    
+    rows.forEach(function(row) {
+        var inputs = row.querySelectorAll('input');
+        var fromNo = parseInt(inputs[0].value) || 0;
+        var toNo = parseInt(inputs[1].value) || 0;
+        if (fromNo > 0 && toNo > 0) {
+            lines.push([fromNo, toNo]);
+        }
+    });
+    
+    if (lines.length === 0) {
+        MAS.showAlert('Please enter at least one line', 'error');
+        return;
+    }
+    
+    try {
+        var response = await fetch('/calculate/interpolation', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                vertical_interval: interval,
+                lines: lines
+            })
+        });
+        
+        if (!response.ok) throw new Error('Interpolation calculation failed');
+        
+        var result = await response.json();
+        interpResultsData = result;
+        
+        var html = '<table class="data-table" style="width:100%;"><thead><tr><th>Line</th><th>Distance</th><th>Height</th></tr></thead><tbody>';
+        
+        result.results.forEach(function(line, idx) {
+            html += '<tr><td colspan="3" style="background:#003300;font-weight:bold;">Line ' + line.from + ' --> ' + line.to + ' (DIFF H=' + line.height_diff.toFixed(2) + ', DIST=' + line.distance.toFixed(2) + ')</td></tr>';
+            line.points.forEach(function(p) {
+                html += '<tr><td></td><td>' + p.distance.toFixed(2) + '</td><td>' + p.height.toFixed(2) + '</td></tr>';
+            });
+        });
+        
+        html += '</tbody></table>';
+        
+        document.getElementById('interp-result-content').innerHTML = html;
+        document.getElementById('interp-result').style.display = 'block';
+        
+    } catch (error) {
+        MAS.showAlert('Error: ' + error.message, 'error');
+    }
+}
+
+function saveInterpResults() {
+    if (!interpResultsData || !interpResultsData.results) {
+        MAS.showAlert('No results to save', 'error');
+        return;
+    }
+    
+    var points = [];
+    var nextNo = 1;
+    
+    fetch('/api/points')
+    .then(function(r) { return r.json(); })
+    .then(function(existingPoints) {
+        if (existingPoints && existingPoints.length > 0) {
+            nextNo = Math.max.apply(null, existingPoints.map(function(p) { return p.no; })) + 1;
+        }
+        
+        var lineIdx = 0;
+        var promises = [];
+        
+        interpResultsData.results.forEach(function(line) {
+            line.points.forEach(function(p) {
+                points.push({
+                    no: nextNo++,
+                    y: 0,
+                    x: 0,
+                    h: p.height
+                });
+            });
+        });
+        
+        MAS.savePoints(points, function(saveResult) {
+            if (saveResult.count > 0) {
+                MAS.showAlert(saveResult.count + ' interpolated points saved (with heights only)', 'success');
+            }
+        });
+    });
+}
+
+function printInterpResults() {
+    if (!interpResultsData || !interpResultsData.results) {
+        MAS.showAlert('No results to print', 'error');
+        return;
+    }
+    
+    var printContent = '';
+    
+    printContent += '====================================================\n';
+    printContent += 'SURVEYING SYSTEMS\n';
+    printContent += 'LICENCED SURVEYER No. 000\n';
+    printContent += 'RAMALLAH P.O.BOX 0000\n';
+    printContent += 'TELEPHONE: 0562150193\n';
+    printContent += 'HEADER FOR PRINTING HERE\n';
+    printContent += '====================================================\n';
+    
+    printContent += '\nI N T E R P O L A T I O N\n';
+    printContent += 'Vertical Interval: ' + interpResultsData.vertical_interval + ' m\n';
+    printContent += '====================================================\n\n';
+    
+    interpResultsData.results.forEach(function(line) {
+        printContent += 'LINE ' + line.from + ' --> ' + line.to + '\n';
+        printContent += 'Distance: ' + line.distance.toFixed(2) + 'm  |  Height Diff: ' + line.height_diff.toFixed(2) + 'm\n';
+        printContent += '----------------------------------------------------\n';
+        printContent += 'DISTANCE     HEIGHT\n';
+        printContent += '--------     -------\n';
+        line.points.forEach(function(p) {
+            printContent += p.distance.toFixed(2).padStart(8) + '     ' + p.height.toFixed(2) + '\n';
+        });
+        printContent += '\n';
+    });
+    
+    printContent += '====================================================\n';
+    
+    var printWindow = window.open('', '_blank');
+    printWindow.document.write('<!DOCTYPE html><html><head><title>Print - MAS</title>');
+    printWindow.document.write('<style>body{font-family:"Courier New",monospace;margin:20px;white-space:pre;}</style>');
+    printWindow.document.write('</head><body>' + printContent + '</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
+</script>
+{% endblock %}

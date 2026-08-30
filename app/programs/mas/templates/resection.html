@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - التحديد{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">[ R E S E C T I O N ]</div>
+    
+    <div class="card-body">
+        <div class="info-bar" style="margin-bottom: 15px;">
+            <div>
+                <span class="info-label">FILE: </span>
+                <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
+            </div>
+        </div>
+        
+        <div class="dos-box">
+            <div class="dos-header">Resection from 2 Points:</div>
+            <p style="font-size: 12px; color: #888; margin-bottom: 15px;">
+                Calculate station position from 2 known points with distances
+            </p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Point 1 No:</label>
+                    <input type="number" id="resect-p1" class="form-control" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Point 2 No:</label>
+                    <input type="number" id="resect-p2" class="form-control" value="2" min="1">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Distance to Point 1 (m):</label>
+                    <input type="number" id="resect-dist1" class="form-control" step="0.001" placeholder="Distance">
+                </div>
+                <div class="form-group">
+                    <label>Distance to Point 2 (m):</label>
+                    <input type="number" id="resect-dist2" class="form-control" step="0.001" placeholder="Distance">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>New Station Point No:</label>
+                <input type="number" id="resect-new-no" class="form-control" value="100" min="1">
+            </div>
+            
+            <button onclick="calculateResection()" class="btn btn-primary">[ CALCULATE ]</button>
+        </div>
+        
+        <div id="resect-result" class="dos-box" style="display: none; margin-top: 15px;">
+            <div class="dos-header">Calculated Station Position:</div>
+            <div style="text-align: center; font-size: 14px;">
+                <div>Y = <span id="resect-y" style="color: var(--text-highlight); font-size: 18px;">0.000</span></div>
+                <div>X = <span id="resect-x" style="color: var(--text-highlight); font-size: 18px;">0.000</span></div>
+            </div>
+            
+            <div id="resect-alternate" class="dos-box" style="display: none; margin-top: 10px; background: #001a00;">
+                <div class="dos-header" style="background: #003300;">Alternative Solution:</div>
+                <div style="text-align: center; font-size: 14px;">
+                    <div>Y = <span id="resect-y2" style="color: var(--text-secondary);">0.000</span></div>
+                    <div>X = <span id="resect-x2" style="color: var(--text-secondary);">0.000</span></div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px; text-align: center;">
+                <button onclick="saveResectionPoint(1)" class="btn btn-primary">[ SAVE PRIMARY ]</button>
+                <button onclick="saveResectionPoint(2)" class="btn" id="save-alt-btn" style="display: none;">[ SAVE ALTERNATE ]</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{{ '/' }}" class="btn">[ BACK TO MAIN MENU ]</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var resectionResult = null;
+var resectionAltResult = null;
+
+async function calculateResection() {
+    const p1 = parseInt(document.getElementById('resect-p1').value) || 1;
+    const p2 = parseInt(document.getElementById('resect-p2').value) || 2;
+    const dist1 = parseFloat(document.getElementById('resect-dist1').value) || 0;
+    const dist2 = parseFloat(document.getElementById('resect-dist2').value) || 0;
+    
+    if (dist1 <= 0 || dist2 <= 0) {
+        MAS.showAlert('Please enter valid distances', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/calculate/resection', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                type: '2POINTS',
+                p1: p1,
+                p2: p2,
+                dist1: dist1,
+                dist2: dist2
+            })
+        });
+        
+        if (!response.ok) {
+            const err = await response.json();
+            MAS.showAlert(err.error || 'Resection calculation failed', 'error');
+            return;
+        }
+        
+        const result = await response.json();
+        
+        document.getElementById('resect-y').textContent = result.point1.y.toFixed(3);
+        document.getElementById('resect-x').textContent = result.point1.x.toFixed(3);
+        
+        resectionResult = result.point1;
+        resectionAltResult = result.point2;
+        
+        if (result.point2) {
+            document.getElementById('resect-y2').textContent = result.point2.y.toFixed(3);
+            document.getElementById('resect-x2').textContent = result.point2.x.toFixed(3);
+            document.getElementById('resect-alternate').style.display = 'block';
+            document.getElementById('save-alt-btn').style.display = 'inline-block';
+        } else {
+            document.getElementById('resect-alternate').style.display = 'none';
+            document.getElementById('save-alt-btn').style.display = 'none';
+        }
+        
+        document.getElementById('resect-result').style.display = 'block';
+        
+    } catch (error) {
+        MAS.showAlert('Error: ' + error.message, 'error');
+    }
+}
+
+function saveResectionPoint(which) {
+    var pointToSave = which === 1 ? resectionResult : resectionAltResult;
+    var newNo = parseInt(document.getElementById('resect-new-no').value) || 100;
+    
+    if (!pointToSave) {
+        MAS.showAlert('No point to save', 'error');
+        return;
+    }
+    
+    if (which === 2) {
+        newNo = newNo + 1;
+    }
+    
+    var points = [{
+        no: newNo,
+        y: pointToSave.y,
+        x: pointToSave.x,
+        h: 0.0001
+    }];
+    
+    MAS.savePoints(points, function(result) {
+        if (result.count > 0) {
+            MAS.showAlert('Station point ' + newNo + ' saved successfully', 'success');
+        }
+    });
+}
+</script>
+{% endblock %}

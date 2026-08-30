@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - الأوفست{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">[ O F F S E T S ]</div>
+    
+    <div class="card-body">
+        <div class="dos-box">
+            <div class="dos-header">Line Definition:</div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                <div class="form-group">
+                    <label>Line Start Point No:</label>
+                    <input type="number" id="line-start" class="form-control" placeholder="Point number">
+                </div>
+                <div class="form-group">
+                    <label>Line End Point No:</label>
+                    <input type="number" id="line-end" class="form-control" placeholder="Point number">
+                </div>
+            </div>
+        </div>
+        
+        <div class="dos-box" style="margin-top: 15px;">
+            <div class="dos-header">Offset Points:</div>
+            
+            <table class="data-table" id="offsets-table">
+                <thead>
+                    <tr>
+                        <th>Point No</th>
+                        <th>Offset Distance</th>
+                        <th>Side</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody id="offsets-tbody">
+                    <tr>
+                        <td><input type="number" class="form-control" name="no[]"></td>
+                        <td><input type="number" class="form-control" name="offset[]" step="0.01"></td>
+                        <td>
+                            <select class="form-control" name="side[]">
+                                <option value="LEFT">LEFT</option>
+                                <option value="RIGHT">RIGHT</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="form-control" name="desc[]" placeholder="Description"></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 10px;">
+                <button onclick="addOffsetRow()" class="btn">+ ADD ROW</button>
+                <button onclick="calculateOffsets()" class="btn btn-primary">[ CALCULATE ]</button>
+            </div>
+        </div>
+        
+        <div id="offset-result" class="dos-box" style="display: none; margin-top: 15px;">
+            <div class="dos-header">Calculated Points:</div>
+            <div id="offset-result-content"></div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{{ '/' }}" class="btn">[ BACK TO MAIN MENU ]</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addOffsetRow() {
+    const tbody = document.getElementById('offsets-tbody');
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td><input type="number" class="form-control" name="no[]"></td>
+        <td><input type="number" class="form-control" name="offset[]" step="0.01"></td>
+        <td>
+            <select class="form-control" name="side[]">
+                <option value="LEFT">LEFT</option>
+                <option value="RIGHT">RIGHT</option>
+            </select>
+        </td>
+        <td><input type="text" class="form-control" name="desc[]" placeholder="Description"></td>
+    `;
+    tbody.appendChild(row);
+}
+
+async function calculateOffsets() {
+    const lineStartNo = parseInt(document.getElementById('line-start').value) || 0;
+    const lineEndNo = parseInt(document.getElementById('line-end').value) || 0;
+    
+    if (lineStartNo === 0 || lineEndNo === 0) {
+        MAS.showAlert('Please enter line start and end point numbers', 'error');
+        return;
+    }
+    
+    const points = [];
+    const tbody = document.getElementById('offsets-tbody');
+    const rows = tbody.querySelectorAll('tr');
+    
+    rows.forEach((row) => {
+        const inputs = row.querySelectorAll('input, select');
+        const no = parseInt(inputs[0].value) || 0;
+        const offsetDist = parseFloat(inputs[1].value) || 0;
+        const side = inputs[2].value;
+        
+        if (no > 0 && offsetDist >= 0) {
+            points.push({
+                no: no,
+                offset_distance: offsetDist,
+                side: side
+            });
+        }
+    });
+    
+    if (points.length === 0) {
+        MAS.showAlert('Please enter at least one offset point', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/calculate/offsets', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                line_start_no: lineStartNo,
+                line_end_no: lineEndNo,
+                points: points
+            })
+        });
+        
+        if (!response.ok) {
+            const err = await response.json();
+            MAS.showAlert(err.error || 'Calculation failed', 'error');
+            return;
+        }
+        
+        const result = await response.json();
+        
+        let html = '<table class="data-table"><thead><tr><th>No</th><th>Y</th><th>X</th><th>Side</th></tr></thead><tbody>';
+        result.results.forEach(r => {
+            html += `<tr><td>${r.no}</td><td>${r.y.toFixed(2)}</td><td>${r.x.toFixed(2)}</td><td>${r.side}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        
+        document.getElementById('offset-result-content').innerHTML = html;
+        document.getElementById('offset-result').style.display = 'block';
+        
+        MAS.savePoints(result.results.map(r => ({no: r.no, y: r.y, x: r.x, h: 0.0001})), function(saveResult) {
+            if (saveResult.count > 0) {
+                MAS.showAlert(saveResult.count + ' points saved successfully', 'success');
+            }
+        });
+    } catch (error) {
+        MAS.showAlert('Error: ' + error.message, 'error');
+    }
+}
+</script>
+{% endblock %}

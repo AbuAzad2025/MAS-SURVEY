@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - معاينة الطباعة{% endblock %}
+
+{% block content %}
+<style>
+@media print {
+    .no-print { display: none !important; }
+    body { background: white !important; color: black !important; }
+    .print-page { 
+        font-family: 'Courier New', monospace !important; 
+        background: white !important;
+        color: black !important;
+    }
+    .print-page * { color: black !important; }
+}
+</style>
+
+<div class="card no-print">
+    <div class="card-header">[ P R I N T &nbsp; P R E V I E W ]</div>
+    <div class="card-body">
+        <button onclick="window.print()" class="btn btn-primary">[ PRINT ]</button>
+        <a href="{{ '/' }}" class="btn">[ BACK ]</a>
+    </div>
+</div>
+
+<div class="card print-page">
+    <div class="card-body" style="font-family: 'Courier New', monospace; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 16px; font-weight: bold;">S U R V E Y I N G &nbsp; S Y S T E M S</div>
+            <div style="font-size: 12px;">L I C E N C E D &nbsp; S U R V E Y E R &nbsp; N o . &nbsp; 0 0 0</div>
+            <div style="font-size: 12px;">R A M A L L A H &nbsp; P . O . B O X &nbsp; &nbsp; 0 0 0 0</div>
+            <div style="font-size: 12px;">TELEPHONE &nbsp; : &nbsp; {{ phone }}</div>
+            <div style="font-size: 12px;">H E A D E R &nbsp; F O R &nbsp; P R I N T I N G &nbsp; H E R E</div>
+            <div style="margin-top: 10px;">====================================================</div>
+        </div>
+        
+        {% if file_info %}
+        <div style="margin: 15px 0; font-size: 12px;">
+            <div><strong>NAME OF WORK &nbsp; :</strong> {{ file_info.name }}</div>
+            <div><strong>DATE &nbsp; &nbsp; &nbsp; &nbsp; :</strong> {{ file_info.date or '---' }}</div>
+            <div><strong>PLACE &nbsp; &nbsp; &nbsp; &nbsp; :</strong> {{ file_info.place or '---' }}</div>
+            <div><strong>NAME OF FILE &nbsp; :</strong> {{ file_info.name }}</div>
+            <div><strong>NO. OF POINTS &nbsp; :</strong> {{ file_info.no_of_points }}</div>
+        </div>
+        <div>====================================================</div>
+        {% endif %}
+        
+        {% if points %}
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 15px;">
+            <thead>
+                <tr style="border-bottom: 1px solid black;">
+                    <th style="text-align: left; padding: 5px;">POINT</th>
+                    <th style="text-align: right; padding: 5px;">Y - Axis</th>
+                    <th style="text-align: right; padding: 5px;">X - Axis</th>
+                    {% if points[0].h and points[0].h != 0 %}
+                    <th style="text-align: right; padding: 5px;">HEIGHT</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for point in points %}
+                <tr>
+                    <td style="padding: 3px 5px;">{{ point.point_no }}</td>
+                    <td style="text-align: right; padding: 3px 5px;">{{ "%.2f"|format(point.y) }}</td>
+                    <td style="text-align: right; padding: 3px 5px;">{{ "%.2f"|format(point.x) }}</td>
+                    {% if point.h and point.h != 0 %}
+                    <td style="text-align: right; padding: 3px 5px;">{{ "%.2f"|format(point.h) }}</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
