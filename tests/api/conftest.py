@@ -31,14 +31,14 @@ def sample_file(client):
     file_name = f'test_file_{int(time.time())}'
     
     # Create file
-    client.post('/api/files', json={
+    client.post('/files', json={
         'name': file_name,
         'date': '2026-08-31',
         'place': 'Test Location'
     })
     
     # Set as current
-    client.post('/api/set-file', json={'filename': file_name})
+    client.post('/set-file', json={'filename': file_name})
     
     # Add sample points
     points = [
@@ -47,13 +47,13 @@ def sample_file(client):
         {'no': 3, 'y': 1100.0, 'x': 2100.0, 'h': 60.0},
         {'no': 4, 'y': 1000.0, 'x': 2100.0, 'h': 58.0},
     ]
-    client.post('/api/points', json={'points': points})
+    client.post('/points', json={'points': points})
     
     yield {'name': file_name, 'points': points}
     
     # Cleanup
     try:
-        client.delete(f'/api/files/{file_name}')
+        client.delete(f'/files/{file_name}')
     except Exception:
         pass
 
