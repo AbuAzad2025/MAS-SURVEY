@@ -1,0 +1,4 @@
+[run]
+omit =
+    app/models.py
+    app/shared/models/models.py

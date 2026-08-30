@@ -155,7 +155,7 @@ def print_preview():
 @main_bp.route('/guide')
 def user_guide():
     """User guide page."""
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     guide_path = os.path.join(base_dir, 'USER_GUIDE.md')
     
     try:

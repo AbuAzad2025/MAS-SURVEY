@@ -232,7 +232,7 @@ def get_guide():
     import os
     import re
     
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     guide_path = os.path.join(base_dir, 'USER_GUIDE.md')
     
     try:
