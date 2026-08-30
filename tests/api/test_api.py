@@ -18,16 +18,16 @@ class TestAPIHealth:
 
     def test_api_set_file(self, client, sample_file):
         """Test setting current file via API."""
-        response = client.post('/api/set-file', 
+        response = client.post('/set-file', 
             json={'filename': sample_file['name']})
         assert response.status_code == 200
         assert response.json['status'] == 'ok'
 
     def test_api_get_current_file(self, client, sample_file):
         """Test getting current file info."""
-        client.post('/api/set-file', 
+        client.post('/set-file', 
             json={'filename': sample_file['name']})
-        response = client.get('/api/current-file')
+        response = client.get('/current-file')
         assert response.status_code == 200
         assert response.json['file'] is not None
 
@@ -37,7 +37,7 @@ class TestAPIFiles:
 
     def test_create_file(self, client):
         """Test creating a new survey file."""
-        response = client.post('/api/files', json={
+        response = client.post('/files', json={
             'name': f'test_api_{int(time.time())}',
             'date': '2026-08-31',
             'place': 'API Test Location'
@@ -47,19 +47,19 @@ class TestAPIFiles:
 
     def test_list_files(self, client, sample_file):
         """Test listing all files."""
-        response = client.get('/api/files')
+        response = client.get('/files')
         assert response.status_code == 200
         assert isinstance(response.json, list)
 
     def test_get_file_detail(self, client, sample_file):
         """Test getting file details."""
-        response = client.get(f"/api/files/{sample_file['name']}")
+        response = client.get(f"/files/{sample_file['name']}")
         assert response.status_code == 200
         assert response.json['name'] == sample_file['name']
 
     def test_delete_file(self, client, sample_file):
         """Test deleting a file."""
-        response = client.delete(f"/api/files/{sample_file['name']}")
+        response = client.delete(f"/files/{sample_file['name']}")
         assert response.status_code == 200
         assert response.json['status'] == 'ok'
 
@@ -69,26 +69,26 @@ class TestAPIPoints:
 
     def test_save_points(self, client, sample_file):
         """Test saving points via API."""
-        client.post('/api/set-file', json={'filename': sample_file['name']})
+        client.post('/set-file', json={'filename': sample_file['name']})
         
         points = [
             {'no': 1, 'y': 1000.0, 'x': 2000.0, 'h': 50.0},
             {'no': 2, 'y': 1100.0, 'x': 2000.0, 'h': 55.0},
         ]
         
-        response = client.post('/api/points', json={'points': points})
+        response = client.post('/points', json={'points': points})
         assert response.status_code == 200
         assert response.json['count'] == 2
 
     def test_get_points(self, client, sample_file):
         """Test retrieving points."""
-        client.post('/api/set-file', json={'filename': sample_file['name']})
+        client.post('/set-file', json={'filename': sample_file['name']})
         
         # Add points first
         points = [{'no': 1, 'y': 1000.0, 'x': 2000.0, 'h': 50.0}]
-        client.post('/api/points', json={'points': points})
+        client.post('/points', json={'points': points})
         
-        response = client.get('/api/points')
+        response = client.get('/points')
         assert response.status_code == 200
         assert isinstance(response.json, list)
 
@@ -261,14 +261,14 @@ class TestAPIInterpolation:
 
     def test_interpolation(self, client, sample_file):
         """Test vertical interpolation API."""
-        client.post('/api/set-file', json={'filename': sample_file['name']})
+        client.post('/set-file', json={'filename': sample_file['name']})
         
         # Add points with heights first
         points = [
             {'no': 1, 'y': 0.0, 'x': 0.0, 'h': 100.0},
             {'no': 2, 'y': 10.0, 'x': 10.0, 'h': 110.0},
         ]
-        client.post('/api/points', json={'points': points})
+        client.post('/points', json={'points': points})
         
         response = client.post('/calculate/interpolation', json={
             'vertical_interval': 2.0,
@@ -339,7 +339,7 @@ class TestAPIFreeNumbers:
 
     def test_get_free_numbers(self, client, sample_file):
         """Test getting free numbers (deleted points)."""
-        client.post('/api/set-file', json={'filename': sample_file['name']})
+        client.post('/set-file', json={'filename': sample_file['name']})
         
         # Add points including deleted ones
         points = [
@@ -347,7 +347,7 @@ class TestAPIFreeNumbers:
             {'no': 2, 'y': 0.0, 'x': 0.0, 'h': 0.0},  # Deleted
             {'no': 3, 'y': 3000.0, 'x': 4000.0, 'h': 60.0},
         ]
-        client.post('/api/points', json={'points': points})
+        client.post('/points', json={'points': points})
         
         response = client.post('/calculate/freenumbers', json={
             'from_no': 1,
@@ -362,7 +362,7 @@ class TestAPIPrint:
 
     def test_print_coordinates(self, client, sample_file):
         """Test printing coordinates."""
-        client.post('/api/set-file', json={'filename': sample_file['name']})
+        client.post('/set-file', json={'filename': sample_file['name']})
         
         response = client.post('/print/coordinates', json={
             'type': 'all'
@@ -372,7 +372,7 @@ class TestAPIPrint:
 
     def test_print_grid_limits(self, client, sample_file):
         """Test printing grid limits."""
-        client.post('/api/set-file', json={'filename': sample_file['name']})
+        client.post('/set-file', json={'filename': sample_file['name']})
         
         response = client.get('/print/gridlimits')
         assert response.status_code == 200
@@ -384,13 +384,13 @@ class TestAPISettings:
 
     def test_get_settings(self, client):
         """Test getting settings."""
-        response = client.get('/api/settings')
+        response = client.get('/settings')
         assert response.status_code == 200
         assert isinstance(response.json, dict)
 
     def test_update_settings(self, client):
         """Test updating settings."""
-        response = client.post('/api/settings', json={
+        response = client.post('/settings', json={
             'angle_unit': 'GRADS',
             'company_name': 'Test Company'
         })
@@ -410,7 +410,7 @@ class TestAPIUpload:
         }
         
         response = client.post(
-            '/api/files/upload',
+            '/files/upload',
             data=data,
             content_type='multipart/form-data'
         )
@@ -426,7 +426,7 @@ class TestAPIUpload:
         }
         
         response = client.post(
-            '/api/files/upload',
+            '/files/upload',
             data=data,
             content_type='multipart/form-data'
         )
@@ -451,6 +451,6 @@ class TestAPIErrorHandling:
 
     def test_no_file_selected(self, client):
         """Test API behavior when no file is selected."""
-        response = client.get('/api/points')
+        response = client.get('/points')
         assert response.status_code == 200
         assert response.json == []

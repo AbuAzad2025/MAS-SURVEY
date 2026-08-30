@@ -19,8 +19,11 @@ def create_app(config_name='default'):
                 static_url_path='/static')
     app.config.from_object(config[config_name])
     
-    db_folder = os.path.dirname(app.config['DATABASE'])
-    os.makedirs(db_folder, exist_ok=True)
+    db_path = app.config.get('DATABASE', '')
+    if db_path and db_path != ':memory:':
+        db_folder = os.path.dirname(db_path)
+        if db_folder:
+            os.makedirs(db_folder, exist_ok=True)
     
     from app.shared.models import init_db
     init_db(app.config['DATABASE'])
