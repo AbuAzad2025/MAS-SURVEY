@@ -225,6 +225,18 @@ class TestDistanceAzimuth:
         azimuth = CalculatorService.calculate_azimuth(p1, p2, grads=False)
         assert math.isclose(azimuth, 0.0, abs_tol=1e-9)
 
+    def test_azimuth_negative_in_grades(self):
+        p1 = {'y': 0.0, 'x': 0.0}
+        p2 = {'y': -100.0, 'x': 100.0}
+        azimuth = CalculatorService.calculate_azimuth(p1, p2, grads=True)
+        assert azimuth > 0
+
+    def test_azimuth_negative_in_degrees(self):
+        p1 = {'y': 0.0, 'x': 0.0}
+        p2 = {'y': -100.0, 'x': 100.0}
+        azimuth = CalculatorService.calculate_azimuth(p1, p2, grads=False)
+        assert azimuth > 0
+
 
 class TestIntersections:
     """Test intersection algorithms."""
@@ -349,6 +361,31 @@ class TestInterpolation:
         assert 'height_diff' in result
         assert 'points' in result
         assert result['height_diff'] == 10.0
+
+    def test_interpolation_with_small_height_diff(self):
+        points = {
+            1: {'y': 0.0, 'x': 0.0, 'h': 100.5},
+            2: {'y': 10.0, 'x': 0.0, 'h': 101.0}
+        }
+        lines = [(1, 2)]
+        results = CalculatorService.interpolate_points(points, lines, 0.5)
+        assert len(results) == 1
+
+    def test_resection_3point_zero_angle_raises(self):
+        p1 = {'y': 0.0, 'x': 0.0}
+        p2 = {'y': 0.0, 'x': 100.0}
+        p3 = {'y': 100.0, 'x': 100.0}
+        result = CalculatorService.resection_3point(p1, 0.0, p2, 0.0, p3, 0.0)
+        assert result is None
+
+    def test_interpolation_distance_out_of_bounds(self):
+        points = {
+            1: {'y': 0.0, 'x': 0.0, 'h': 100.0},
+            2: {'y': 10.0, 'x': 0.0, 'h': 100.5}
+        }
+        lines = [(1, 2)]
+        results = CalculatorService.interpolate_points(points, lines, 2.0)
+        assert len(results) == 0
 
 
 class TestResection:
