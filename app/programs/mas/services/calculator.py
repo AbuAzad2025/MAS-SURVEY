@@ -116,19 +116,19 @@ class SurveyCalculator:
         a = (d1 * d1 - d2 * d2 + d * d) / (2 * d)
         h = math.sqrt(d1 * d1 - a * a)
         
-        dx_perp = -dy / d
-        dy_perp = dx / d
+        dx_perp = dy / d
+        dy_perp = -dx / d
         
         xm = p1['x'] + a * (dx / d)
         ym = p1['y'] + a * (dy / d)
         
         p3 = {
-            'y': ym + h * dx_perp,
-            'x': xm + h * dy_perp
+            'y': ym + h * dy_perp,
+            'x': xm + h * dx_perp
         }
         p4 = {
-            'y': ym - h * dx_perp,
-            'x': xm - h * dy_perp
+            'y': ym - h * dy_perp,
+            'x': xm - h * dx_perp
         }
         
         return (p3, p4)
@@ -332,9 +332,9 @@ class SurveyCalculator:
         yc = p3['y']
         xc = p3['x']
         
-        a1 = math.cos(angle1)
-        a2 = math.cos(angle2)
-        a3 = math.cos(angle3)
+        a1 = 1.0 / math.tan(SurveyCalculator.grads_to_radians(angle1))
+        a2 = 1.0 / math.tan(SurveyCalculator.grads_to_radians(angle2))
+        a3 = 1.0 / math.tan(SurveyCalculator.grads_to_radians(angle3))
         
         d12 = SurveyCalculator.calculate_distance(ya, xa, yb, xb)
         d13 = SurveyCalculator.calculate_distance(ya, xa, yc, xc)
@@ -382,16 +382,16 @@ class SurveyCalculator:
         xm = xa + a * dx / d
         ym = ya + a * dy / d
         
-        dx_perp = -dy / d
-        dy_perp = dx / d
+        dx_perp = dy / d
+        dy_perp = -dx / d
         
         p3 = {
-            'y': ym + h * dx_perp,
-            'x': xm + h * dy_perp
+            'y': ym + h * dy_perp,
+            'x': xm + h * dx_perp
         }
         p4 = {
-            'y': ym - h * dx_perp,
-            'x': xm - h * dy_perp
+            'y': ym - h * dy_perp,
+            'x': xm - h * dx_perp
         }
         
         return (p3, p4)

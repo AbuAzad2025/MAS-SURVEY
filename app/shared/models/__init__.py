@@ -11,6 +11,7 @@ def get_db_connection(db_path):
     """Get database connection."""
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA foreign_keys = ON')
     return conn
 
 
@@ -40,9 +41,13 @@ def init_db(db_path):
             x REAL,
             h REAL,
             code TEXT,
-            FOREIGN KEY (file_name) REFERENCES survey_files(name)
+            FOREIGN KEY (file_name) REFERENCES survey_files(name) ON DELETE CASCADE
         )
     ''')
+    
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_survey_points_file_name ON survey_points(file_name)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_survey_points_no ON survey_points(no)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_survey_files_created_at ON survey_files(created_at)')
     
     # Settings table
     cursor.execute('''
@@ -54,6 +59,9 @@ def init_db(db_path):
     
     conn.commit()
     conn.close()
+
+
+VALID_SETTINGS_KEYS = {'angle_unit', 'vertical_angle', 'printing', 'company_name', 'phone', 'address'}
 
 
 class Settings:
@@ -72,6 +80,8 @@ class Settings:
     @staticmethod
     def set(db_path, key, value):
         """Set a setting value."""
+        if key not in VALID_SETTINGS_KEYS:
+            return
         conn = get_db_connection(db_path)
         cursor = conn.cursor()
         cursor.execute('''

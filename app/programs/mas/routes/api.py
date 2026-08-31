@@ -653,6 +653,29 @@ def calculate_resection():
             'point2': {'y': round(result[1]['y'], 3), 'x': round(result[1]['x'], 3)}
         })
     
+    elif resection_type == '3POINTS':
+        p1_no = data.get('p1', 1)
+        p2_no = data.get('p2', 2)
+        p3_no = data.get('p3', 3)
+        angle1 = data.get('angle1', 0)
+        angle2 = data.get('angle2', 0)
+        angle3 = data.get('angle3', 0)
+        
+        p1 = points_dict.get(p1_no, {'y': 0, 'x': 0})
+        p2 = points_dict.get(p2_no, {'y': 0, 'x': 0})
+        p3 = points_dict.get(p3_no, {'y': 0, 'x': 0})
+        
+        result = SurveyCalculator.resection(p1, angle1, p2, angle2, p3, angle3)
+        
+        if result is None:
+            return jsonify({'error': 'Cannot calculate 3-point resection'}), 400
+        
+        return jsonify({
+            'status': 'ok',
+            'type': '3POINTS',
+            'point': {'y': round(result['y'], 3), 'x': round(result['x'], 3)}
+        })
+    
     return jsonify({'error': 'Unknown resection type'}), 400
 
 
