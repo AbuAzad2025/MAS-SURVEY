@@ -380,6 +380,23 @@ class TestAPITraverse:
         response = client.post('/api/calculate/traverse', json={'points': points})
         assert response.status_code == 400
 
+    def test_bowditch_zero_distance(self, client):
+        """Test traverse with zero total distance."""
+        points = [
+            {'no': 1, 'y': 0.0, 'x': 0.0, 'h': 0.0,
+             'azimuth': 0.0, 'distance': 0.0,
+             'delta_y': 0.0, 'delta_x': 0.0},
+            {'no': 2, 'y': 0.0, 'x': 0.0, 'h': 0.0,
+             'azimuth': 100.0, 'distance': 0.0,
+             'delta_y': 0.0, 'delta_x': 0.0},
+        ]
+        response = client.post('/api/calculate/traverse', json={
+            'points': points,
+            'known_start': {'y': 0.0, 'x': 0.0},
+            'known_end': {'y': 0.0, 'x': 0.0}
+        })
+        assert response.status_code == 400
+
 
 class TestAPIFreeNumbers:
     """Test free numbers API endpoint."""
@@ -429,10 +446,36 @@ class TestAPIPrint:
         response = client.get('/api/print/gridlimits')
         assert response.status_code == 200
 
-    def test_print_draw(self, client, sample_file):
-        """Test print draw endpoint."""
+    def test_print_draw_with_heights(self, client, sample_file):
+        """Test print draw with heights."""
         response = client.get('/api/print/draw')
-        assert response.status_code in [200, 400]
+        assert response.status_code == 200
+
+    def test_print_draw_no_heights(self, client):
+        """Test print draw without heights returns error JSON."""
+        with client.session_transaction() as sess:
+            sess.clear()
+        name = f'test_no_heights_{int(time.time())}'
+        client.post('/api/files', json={'name': name, 'date': '2026-08-31', 'place': 'Test'})
+        client.post('/api/set-file', json={'filename': name})
+        response = client.get('/api/print/draw')
+        assert response.status_code == 200
+        assert response.json.get('error') == 'no_heights'
+
+    def test_print_coordinates_no_file(self, client):
+        """Test print coordinates without file."""
+        response = client.post('/api/print/coordinates', json={'type': 'all'})
+        assert response.status_code == 400
+
+    def test_print_gridlimits_no_file(self, client):
+        """Test print grid limits without file."""
+        response = client.get('/api/print/gridlimits')
+        assert response.status_code == 400
+
+    def test_print_draw_no_file(self, client):
+        """Test print draw without file."""
+        response = client.get('/api/print/draw')
+        assert response.status_code == 400
 
 
 class TestAPISettings:
