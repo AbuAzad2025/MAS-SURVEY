@@ -597,6 +597,92 @@ class TestAPIPointsEdge:
         assert response.status_code == 200
 
 
+class TestAPICalculationErrors:
+    """Test API calculation error handling."""
+
+    def test_calculate_area_too_few_points(self, client):
+        """Test area calculation with less than 3 points."""
+        response = client.post('/api/calculate/area', json={
+            'points': [{'y': 0, 'x': 0}]
+        })
+        assert response.status_code == 400
+
+    def test_calculate_area_with_zero_area(self, client):
+        """Test area calculation with zero area result."""
+        response = client.post('/api/calculate/area', json={
+            'points': [
+                {'y': 0.0, 'x': 0.0},
+                {'y': 0.0, 'x': 0.0},
+                {'y': 0.0, 'x': 0.0}
+            ]
+        })
+        assert response.status_code == 200
+
+    def test_calculate_perimeter_error(self, client):
+        """Test perimeter calculation error handling."""
+        response = client.post('/api/calculate/perimeter', json={
+            'points': [{'y': 0, 'x': 0}]
+        })
+        assert response.status_code >= 200
+
+    def test_calculate_polar_empty_observations(self, client):
+        """Test polar calculation with empty observations."""
+        response = client.post('/api/calculate/polar', json={
+            'type': 'DISTOMAT',
+            'station_no': 1,
+            'back_azimuth': 0,
+            'observations': []
+        })
+        assert response.status_code >= 200
+
+    def test_calculate_intersection_error(self, client):
+        """Test intersection calculation error handling."""
+        response = client.post('/api/calculate/intersection', json={
+            'type': 'UNKNOWN'
+        })
+        assert response.status_code == 400
+
+    def test_calculate_implant_negative_distance(self, client):
+        """Test implant calculation with negative distance."""
+        response = client.post('/api/calculate/implant', json={
+            'base_point': {'y': 0, 'x': 0, 'h': 0},
+            'distance': -100,
+            'bearing': 0,
+            'height': 0
+        })
+        assert response.status_code >= 200
+
+    def test_calculate_circle_unknown_type(self, client):
+        """Test circle calculation with unknown type."""
+        response = client.post('/api/calculate/circle', json={
+            'type': 'UNKNOWN'
+        })
+        assert response.status_code >= 200
+
+    def test_calculate_resection_error(self, client):
+        """Test resection calculation error handling."""
+        response = client.post('/api/calculate/resection', json={
+            'type': 'UNKNOWN'
+        })
+        assert response.status_code == 400
+
+    def test_calculate_interpolation_error(self, client, sample_file):
+        """Test interpolation calculation error handling."""
+        client.post('/api/set-file', json={'filename': sample_file['name']})
+        response = client.post('/api/calculate/interpolation', json={
+            'vertical_interval': -1,
+            'lines': [[1, 2]]
+        })
+        assert response.status_code == 400
+
+    def test_traverse_error(self, client):
+        """Test traverse calculation error handling."""
+        response = client.post('/api/calculate/traverse', json={
+            'points': [{'no': 1}]
+        })
+        assert response.status_code == 400
+
+
 class TestAPIErrorHandling:
     """Test API error handling."""
 
