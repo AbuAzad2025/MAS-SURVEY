@@ -71,12 +71,13 @@ def sample_points():
 
 @pytest.fixture
 def sample_dtf_content():
-    """Create sample DTF file content."""
+    """Create sample DTF file content matching the parser format."""
     import struct
     
-    header = b'SAMPLE          '
-    marker = b'\xDC\x05\x00\x00'
-    date_str = b'31-8-2026     '
+    # DTF format: 15 byte header + marker + 40 bytes + binary point data
+    header = b'SAMPLE         '  # Exactly 15 bytes
+    marker = b'\xDC\x05\x00\x00'  # 4 bytes
+    padding = b'\x00' * 40  # 40 bytes of padding after marker
     
     points = [
         (1000.0, 2000.0, 50.0),
@@ -87,11 +88,11 @@ def sample_dtf_content():
     
     data = b''
     for y, x, h in points:
-        data += struct.pack('<d', y)
-        data += struct.pack('<d', x)
-        data += struct.pack('<d', h)
+        data += struct.pack('<d', y)  # 8 bytes
+        data += struct.pack('<d', x)  # 8 bytes
+        data += struct.pack('<d', h)  # 8 bytes
     
-    return header + marker + date_str + header + data
+    return header + marker + padding + data
 
 
 @pytest.fixture

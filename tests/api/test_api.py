@@ -246,6 +246,19 @@ class TestAPIOffsets:
         })
         assert response.status_code == 200
 
+    def test_calculate_offsets_line_too_short(self, client):
+        """Test offsets calculation with line too short triggers error handling."""
+        response = client.post('/api/calculate/offsets', json={
+            'line_start': {'y': 0, 'x': 0},
+            'line_end': {'y': 0.00001, 'x': 0.00001},
+            'points': [
+                {'no': 1, 'offset_distance': 10, 'side': 'LEFT'}
+            ]
+        })
+        assert response.status_code == 200
+        assert 'results' in response.json
+        assert 'error' in response.json['results'][0]
+
 
     def test_calculate_circle_collinear_points(self, client):
         """Test circle center with collinear points returns error."""
@@ -472,6 +485,22 @@ class TestAPIPrint:
         response = client.get('/api/print/gridlimits')
         assert response.status_code == 400
 
+    def test_print_freenumbers_no_file(self, client):
+        """Test print freenumbers without file."""
+        response = client.post('/api/print/freenumbers', json={'from_no': 1, 'to_no': 100})
+        assert response.status_code == 400
+
+    def test_print_gridlimits_empty_file(self, client):
+        """Test print grid limits with file but no points."""
+        with client.session_transaction() as sess:
+            sess.clear()
+        name = f'test_empty_{int(time.time())}'
+        client.post('/api/files', json={'name': name, 'date': '2026-08-31', 'place': 'Test'})
+        client.post('/api/set-file', json={'filename': name})
+        response = client.get('/api/print/gridlimits')
+        assert response.status_code == 400
+        assert 'No points' in response.json.get('error', '')
+
     def test_print_draw_no_file(self, client):
         """Test print draw without file."""
         response = client.get('/api/print/draw')
@@ -565,6 +594,31 @@ class TestAPIFileUpload:
         data = {'file': (io.BytesIO(b'not a valid dtf file content here'), 'test.DTF')}
         response = client.post('/api/files/upload', data=data, content_type='multipart/form-data')
         assert response.status_code == 400
+
+    def test_upload_small_file(self, client):
+        """Test upload with file too small."""
+        import io
+        data = {'file': (io.BytesIO(b'x'), 'test.DTF')}
+        response = client.post('/api/files/upload', data=data, content_type='multipart/form-data')
+        assert response.status_code == 400
+
+    def test_upload_valid_dtf(self, client):
+        """Test upload with valid DTF file."""
+        import struct
+        import io
+        header = b'SAMPLE          '
+        marker = b'\xDC\x05\x00\x00'
+        date_str = b'31-8-2026     '
+        points_data = b''
+        for y, x, h in [(1000.0, 2000.0, 50.0), (1100.0, 2000.0, 55.0)]:
+            points_data += struct.pack('<d', y)
+            points_data += struct.pack('<d', x)
+            points_data += struct.pack('<d', h)
+        content = header + marker + date_str + header + points_data
+        data = {'file': (io.BytesIO(content), 'test.DTF')}
+        response = client.post('/api/files/upload', data=data, content_type='multipart/form-data')
+        assert response.status_code == 200
+        assert response.json['status'] == 'ok'
 
 
 class TestAPIPointsEdge:
