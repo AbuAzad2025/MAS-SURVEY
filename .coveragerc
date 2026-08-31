@@ -1,5 +1,5 @@
 [run]
 omit =
-    app/models.py
-    app/shared/models/models.py
-    app/shared/models/__init__.py
+    */app/models.py
+    */app/shared/models/models.py
+    */app/shared/models/__init__.py
