@@ -135,20 +135,20 @@ class TestAPICalculations:
         assert response.status_code == 400
 
     def test_calculate_intersection_two_circles(self, client):
-        """Test two circles intersection API."""
+        """Test two distances/circles intersection API."""
         response = client.post('/api/calculate/intersection', json={
-            'type': 'TWO_CIRCLES',
+            'type': 'TWO_DISTANCES',
             'p1': {'y': 0.0, 'x': 0.0},
             'distance1': 100.0,
             'p2': {'y': 100.0, 'x': 0.0},
             'distance2': 100.0
         })
-        assert response.status_code in [200, 400]
+        assert response.status_code == 200
 
     def test_calculate_intersection_non_intersecting_circles(self, client):
         """Test non-intersecting circles returns error."""
         response = client.post('/api/calculate/intersection', json={
-            'type': 'TWO_CIRCLES',
+            'type': 'TWO_DISTANCES',
             'p1': {'y': 0.0, 'x': 0.0},
             'distance1': 10.0,
             'p2': {'y': 100.0, 'x': 0.0},
@@ -166,6 +166,17 @@ class TestAPICalculations:
             'distance2': 30.0
         })
         assert response.status_code in [200, 400]
+
+    def test_calculate_intersection_line_circle_no_intersect(self, client):
+        """Test line-circle with no intersection."""
+        response = client.post('/api/calculate/intersection', json={
+            'type': 'LINE_DISTANCE',
+            'p1': {'y': 0.0, 'x': 0.0},
+            'bearing1': 0.0,
+            'p2': {'y': 50.0, 'x': 50.0},
+            'distance2': 5.0
+        })
+        assert response.status_code == 400
 
     def test_calculate_intersection_unknown_type(self, client):
         """Test unknown intersection type returns error."""
@@ -737,8 +748,8 @@ class TestAPICalculationErrors:
         assert response.status_code == 400
 
 
-class TestAPIErrorHandling:
-    """Test API error handling."""
+class TestAPIExceptionHandling:
+    """Test API exception handling."""
 
     def test_invalid_json(self, client):
         """Test handling of invalid JSON."""
