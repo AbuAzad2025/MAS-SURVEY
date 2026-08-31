@@ -13,6 +13,14 @@
                 <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
             </div>
         </div>
+
+        <div class="guidance-box" style="background:#1a1a2e;border:1px solid #00ff41;padding:10px;border-radius:5px;margin-bottom:15px;">
+            <strong style="color:#00ff41;">📍 المدخلات:</strong>
+            <span style="color:#ccc;"> رقم نقطة المحطة (Station) | السمت الخلفي (Back Azimuth) | المشاهدات (مسافة، زاوية، ارتفاع)</span>
+            <br>
+            <strong style="color:#00ff41;">📤 المخرجات:</strong>
+            <span style="color:#ccc;"> إحداثيات النقاط الجديدة (Y, X, H) | السمت المحسوب</span>
+        </div>
         
         <div class="menu-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 15px;">
             <a href="#" onclick="showPolarType(1)" class="menu-item">

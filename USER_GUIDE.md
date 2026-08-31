@@ -19,6 +19,323 @@
 12. [PLOTTING - الطباعة والرسم](#12-plotting---الطباعة-والرسم)
 13. [PLAN ON SCREEN - عرض الخطة](#13-plan-on-screen---عرض-الخطة)
 14. [الرسائل والأخطاء](#14-الرسائل-والأخطاء)
+15. [المرجع السريع - المدخلات والمخرجات](#15-المرجع-السريع---المدخلات-والمخرجات)
+
+---
+
+## 0. المدخلات والمخرجات (Inputs & Outputs)
+
+### 0.1 ملخص الوظائف
+
+| الوظيفة | الاختصار | المدخلات | المخرجات | يتطلب ملف |
+|---------|----------|----------|----------|----------|
+| **POLAR** | 3 | station_no, back_azimuth, observations | y, x, h, bearing | ✅ |
+| **OFFSETS** | 4 | line_start, line_end, offset_distance, side | y, x | ✅ |
+| **CIRCLE** | 5 | type, value1, value2 | result, unit | ❌ |
+| **INTERSECTIONS** | 6 | type, p1, p2, bearing/distance | point(s) | ❌ |
+| **IMPLANT** | 7 | base_point, distance, bearing, height | y, x, h | ✅ |
+| **RESECTION 3PT** | 7 | p1, p2, p3, angle1, angle2, angle3 | y, x | ✅ |
+| **RESECTION 2PT** | 7 | p1, p2, dist1, dist2 | y, x (حلين) | ✅ |
+| **AREA** | 8 | points[] | area, perimeter | ✅ |
+| **TRAVERSE** | 8 | delta_y, delta_x, distance | adjusted_points, error | ✅ |
+| **INTERPOLATION** | 9 | vertical_interval, lines | height, distance, y, x | ✅ |
+| **PLOTTING** | 9 | type, range | coordinates, grid | ✅ |
+| **PLAN** | 0 | - | visualization | ✅ |
+
+---
+
+### 0.2 المدخلات والمخرجات التفصيلية
+
+#### POLAR - المساحة بالشعاع
+
+**المدخلات:**
+```
+station_no      : رقم نقطة المحطة (integer)
+back_azimuth    : السمت الخلفي (float, grads)
+observations[]   : مصفوفة المشاهدات
+  ├─ no        : رقم النقطة الجديدة (integer)
+  ├─ distance  : المسافة الأفقية (float, متر)
+  ├─ angle     : الزاوية الأفقية (float, grads)
+  ├─ v_angle   : الزاوية العمودية (float, grads, اختياري)
+  └─ h         : الارتفاع (float, اختياري)
+```
+
+**المخرجات:**
+```
+results[]       : مصفوفة النتائج
+  ├─ no        : رقم النقطة
+  ├─ y         : إحداثي Y
+  ├─ x         : إحداثي X
+  ├─ h         : الارتفاع
+  └─ bearing   : السمت المحسوب
+```
+
+---
+
+#### OFFSETS - حساب الإزاحة
+
+**المدخلات:**
+```
+line_start_no   : رقم نقطة بداية الخط (integer)
+line_end_no     : رقم نقطة نهاية الخط (integer)
+points[]        : مصفوفة الإزاحات
+  ├─ no        : رقم التعريف (integer)
+  ├─ offset_distance : مسافة الإزاحة (float, متر)
+  └─ side      : الجهة (LEFT / RIGHT)
+```
+
+**المخرجات:**
+```
+results[]       : مصفوفة النتائج
+  ├─ no        : رقم التعريف
+  ├─ y         : إحداثي Y للنقطة الإزاحة
+  ├─ x         : إحداثي X للنقطة الإزاحة
+  └─ side      : الجهة
+```
+
+---
+
+#### CIRCLE - حسابات الدائرة
+
+**المدخلات:**
+```
+type            : نوع الحساب (string)
+  ├─ ARC       : طول القوس
+  ├─ CIRCUMFERENCE : المحيط
+  ├─ AREA      : المساحة
+  ├─ CENTER    : المركز من 3 نقاط
+  ├─ RADIUS    : نصف القطر
+  └─ CHORD     : الوتر
+
+value1          : القيمة الأولى (float)
+value2          : القيمة الثانية (float, اختياري حسب النوع)
+```
+
+**المخرجات:**
+```
+result          : النتيجة (float)
+unit            : وحدة القياس (m, m²)
+```
+
+---
+
+#### INTERSECTIONS - التقاطعات
+
+**المدخلات:**
+```
+type            : نوع التقاطع (string)
+  ├─ TWO_LINES      : تقاطع خطين
+  ├─ TWO_DISTANCES  : تقاطع دائرتين
+  ├─ LINE_DISTANCE  : خط ودائرة
+  └─ BEARING_BEARING : سمت وسمت
+
+p1              : النقطة الأولى {y, x}
+p2              : النقطة الثانية {y, x}
+bearing1         : سمت الخط الأول (float, grads)
+bearing2         : سمت الخط الثاني (float, grads)
+distance1        : مسافة الدائرة الأولى (float, متر)
+distance2        : مسافة الدائرة الثانية (float, متر)
+```
+
+**المخرجات:**
+```
+point           : نقطة التقاطع {y, x}
+-- أو --
+point1          : الحل الأول {y, x}
+point2          : الحل الثاني {y, x}
+```
+
+---
+
+#### IMPLANT - التموضع
+
+**المدخلات:**
+```
+base_point_no   : رقم نقطة البداية (integer)
+distance        : المسافة (float, متر)
+bearing         : السمت (float, grads)
+height          : الارتفاع الجديد (float, اختياري)
+```
+
+**المخرجات:**
+```
+base            : {y, x, h} - النقطة المعلومة
+implant         : {y, x, h} - النقطة الجديدة
+distance        : المسافة المدخلة
+bearing         : السمت المدخل
+```
+
+---
+
+#### RESECTION 3-POINT - الرسالة (3 نقاط)
+
+**المدخلات:**
+```
+p1              : رقم النقطة الأولى (integer)
+p2              : رقم النقطة الثانية (integer)
+p3              : رقم النقطة الثالثة (integer)
+angle1 (α)      : الزاوية عند النقطة المجهولة من P1 (float, grads)
+angle2 (β)      : الزاوية عند النقطة المجهولة من P2 (float, grads)
+angle3 (γ)      : الزاوية عند النقطة المجهولة من P3 (float, grads)
+```
+
+**المخرجات:**
+```
+point           : {y, x} - موقع النقطة المجهولة
+```
+
+---
+
+#### RESECTION 2-POINT - الرسالة (نقطتين)
+
+**المدخلات:**
+```
+p1              : رقم النقطة الأولى (integer)
+p2              : رقم النقطة الثانية (integer)
+dist1           : المسافة من P1 للنقطة المجهولة (float, متر)
+dist2           : المسافة من P2 للنقطة المجهولة (float, متر)
+```
+
+**المخرجات:**
+```
+point1          : {y, x} - الحل الأول
+point2          : {y, x} - الحل الثاني (على الجهة الأخرى)
+```
+
+---
+
+#### AREA - حساب المساحة
+
+**المدخلات:**
+```
+points[]        : مصفوفة النقاط
+  ├─ y          : إحداثي Y
+  ├─ x          : إحداثي X
+  └─ h          : الارتفاع (اختياري)
+```
+
+**المخرجات:**
+```
+area            : المساحة (float, م²)
+perimeter       : المحيط (float, متر) - اختياري
+formatted       : نص منسق
+```
+
+---
+
+#### TRAVERSE - تصحيح العبور
+
+**المدخلات:**
+```
+points[]        : مصفوفة نقاط العبور
+  ├─ no         : رقم النقطة
+  ├─ delta_y    : الإزاحة في Y (float, متر)
+  ├─ delta_x    : الإزاحة في X (float, متر)
+  ├─ distance   : المسافة (float, متر)
+  └─ y, x, h   : الإحداثيات (اختياري)
+
+known_start     : نقطة البداية المعلومة {y, x} (اختياري)
+known_end       : نقطة النهاية المعلومة {y, x} (اختياري)
+```
+
+**المخرجات:**
+```
+adjusted_points[] : مصفوفة النقاط المصححة
+  ├─ no         : رقم النقطة
+  ├─ y          : Y المصحح
+  ├─ x          : X المصحح
+  ├─ delta_y    : الإزاحة الأصلية
+  ├─ delta_x    : الإزاحة الأصلية
+  ├─ correction_y : تصحيح Y
+  ├─ correction_x : تصحيح X
+  └─ distance   : المسافة
+
+closure_error_y : خطأ الإغلاق في Y (float)
+closure_error_x : خطأ الإغلاق في X (float)
+linear_misclosure : الخطأ الخطي الكلي (float)
+precision_ratio : نسبة الدقة (float)
+total_distance : مجموع المسافات (float)
+```
+
+---
+
+#### INTERPOLATION - الاستيفاء
+
+**المدخلات:**
+```
+vertical_interval : الفاصل الرأسي (float, متر)
+lines[]          : مصفوفة الخطوط
+  ├─ from       : رقم نقطة البداية
+  └─ to         : رقم نقطة النهاية
+```
+
+**المخرجات:**
+```
+results[]        : مصفوفة النتائج
+  ├─ from        : رقم نقطة البداية
+  ├─ to          : رقم نقطة النهاية
+  ├─ total_distance : المسافة الكلية
+  ├─ height_diff : فرق الارتفاع
+  └─ points[]    : النقاط المستوفاة
+      ├─ height  : الارتفاع
+      ├─ distance : المسافة من البداية
+      ├─ y       : إحداثي Y
+      └─ x       : إحداثي X
+```
+
+---
+
+### 0.3 صيغ البيانات (Data Formats)
+
+#### نقطة (Point)
+```json
+{
+  "no": 1,
+  "y": 10000.000,
+  "x": 20000.000,
+  "h": 0.000,
+  "code": "BM1"
+}
+```
+
+#### ملف (SurveyFile)
+```json
+{
+  "name": "survey_job_1",
+  "date": "2026-08-30",
+  "place": "رام الله",
+  "no_of_points": 125
+}
+```
+
+#### إعدادات (Settings)
+```json
+{
+  "angle_unit": "GRADS",
+  "vertical_angle": "GRADS",
+  "printing": "STANDARD",
+  "company_name": "مكتب الرافدين",
+  "phone": "0562150193"
+}
+```
+
+---
+
+### 0.4 حدود البيانات (Data Limits)
+
+| الحقل | الحد الأدنى | الحد الأقصى | الوحدة |
+|-------|-----------|-----------|--------|
+| Distance | 0.001 | 99999.999 | متر |
+| Angle (grads) | 0 | 400 | grads |
+| V-Angle (grads) | 0 | 200 | grads |
+| Bearing | 0 | 400 | grads |
+| Coordinate Y | -50000000 | 50000000 | متر |
+| Coordinate X | -50000000 | 50000000 | متر |
+| Height | -1000 | 10000 | متر |
+| File Size | 50 | 10485760 | bytes |
+| Points per file | 0 | 999999 | نقطة |
+
+---
 
 ---
 
