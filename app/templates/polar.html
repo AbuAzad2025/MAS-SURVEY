@@ -32,11 +32,17 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                 <div class="form-group">
                     <label>Station Point No:</label>
-                    <input type="number" id="station-point" class="form-control" value="1">
+                    <input type="number" id="station-point" class="form-control" value="1" 
+                           min="1" max="9999" 
+                           placeholder="رقم نقطة المحطة (موجودة في الملف)"
+                           title="رقم نقطة المحطة التي تقف عليها الجهاز - يجب أن تكون في الملف الحالي">
                 </div>
                 <div class="form-group">
                     <label>Back Azimuth:</label>
-                    <input type="number" id="back-azimuth" class="form-control" value="0" step="0.0001">
+                    <input type="number" id="back-azimuth" class="form-control" value="0" step="0.0001"
+                           min="0" max="399.9999"
+                           placeholder="0.0000 - 399.9999 grads"
+                           title="السمت الخلفي للمحطة - الاتجاه من المحطة إلى نقطة معلومة (بالـ grads)">
                 </div>
             </div>
             
@@ -52,11 +58,20 @@
                 </thead>
                 <tbody id="polar-tbody">
                     <tr>
-                        <td><input type="number" class="form-control" name="no[]" value="1"></td>
-                        <td><input type="number" class="form-control" name="dist[]" step="0.01"></td>
-                        <td><input type="number" class="form-control" name="angle[]" step="0.0001"></td>
-                        <td><input type="number" class="form-control" name="vangle[]" step="0.0001"></td>
-                        <td><input type="number" class="form-control" name="h[]" step="0.01"></td>
+                        <td><input type="number" class="form-control" name="no[]" value="1" min="1" max="9999"
+                                   title="رقم النقطة الجديدة (يجب أن يكون فريداً)"></td>
+                        <td><input type="number" class="form-control" name="dist[]" step="0.01" min="0.001" max="99999.999"
+                                   placeholder="المسافة الأفقية (متر)"
+                                   title="المسافة الأفقية المقاسة - مطلوبة، أكبر من صفر"></td>
+                        <td><input type="number" class="form-control" name="angle[]" step="0.0001" min="0" max="399.9999"
+                                   placeholder="الزاوية الأفقية (grads)"
+                                   title="الزاوية الأفقية المقاسة من السمت الخلفي - بالـ grads (0-400)"></td>
+                        <td><input type="number" class="form-control" name="vangle[]" step="0.0001" min="0" max="199.9999"
+                                   placeholder="الزاوية العمودية (grads)"
+                                   title="الزاوية العمودية - 90.0000 = أفقي، <90 = ارتفاع، >90 = انخفاض"></td>
+                        <td><input type="number" class="form-control" name="h[]" step="0.01"
+                                   placeholder="ارتفاع الجهاز/الهدف (متر)"
+                                   title="ارتفاع نقطة المحطة أو الهدف - اختياري"></td>
                     </tr>
                 </tbody>
             </table>

@@ -152,15 +152,28 @@ HEADER FOR PRINTING HERE
             
             <div id="plot-interpolation-section" class="dos-box" style="display: none;">
                 <div class="dos-header">INTERPOLATION</div>
+                
+                <div class="hint-box" style="background:#001a00;border:1px solid #004400;padding:10px;border-radius:5px;margin-bottom:15px;font-size:12px;">
+                    <strong style="color:#00ff41;">📍 المدخلات:</strong>
+                    <span style="color:#ccc;"> الفاصل الرأسي (متر) | أزواج النقاط (من، إلى)</span>
+                    <br>
+                    <strong style="color:#00ff41;">📤 المخرجات:</strong>
+                    <span style="color:#ccc;"> نقاط مستوفاة (Y, X, H, Distance) على كل خط</span>
+                    <br>
+                    <strong style="color:#ffaa00;">⚠ ملاحظة:</strong>
+                    <span style="color:#ccc;"> النقاط يجب أن تكون لها ارتفاعات (H) في الملف</span>
+                </div>
+                
                 <div style="margin-top: 15px;">
                     <div class="form-group">
                         <label>Vertical Interval (meters):</label>
-                        <input type="number" id="interp-interval" class="form-control" value="0.5" step="0.1" min="0.1">
+                        <input type="number" id="interp-interval" class="form-control" value="0.5" step="0.1" min="0.1" max="100"
+                               title="الفاصل الرأسي بين النقاط المستوفاة - مثال: 0.5 = كل نصف متر">
                     </div>
                     
                     <div style="margin-top: 15px;">
                         <h4>Lines for Interpolation:</h4>
-                        <p style="font-size: 12px; color: #888;">Enter point pairs (From Point No, To Point No)</p>
+                        <p style="font-size: 12px; color: #888;">Enter point pairs (From Point No, To Point No) - both points must have heights (H)</p>
                     </div>
                     
                     <table class="data-table" id="interp-lines-table">
@@ -173,8 +186,10 @@ HEADER FOR PRINTING HERE
                         </thead>
                         <tbody id="interp-lines-tbody">
                             <tr>
-                                <td><input type="number" class="form-control" name="from[]" value="1"></td>
-                                <td><input type="number" class="form-control" name="to[]" value="2"></td>
+                                <td><input type="number" class="form-control" name="from[]" value="1" min="1" max="9999"
+                                           title="رقم نقطة البداية للخط - يجب أن يكون لها ارتفاع (H) في الملف"></td>
+                                <td><input type="number" class="form-control" name="to[]" value="2" min="1" max="9999"
+                                           title="رقم نقطة نهاية الخط - يجب أن يكون لها ارتفاع (H) في الملف"></td>
                                 <td><button onclick="removeInterpLine(this)" class="btn" style="padding:2px 8px;">X</button></td>
                             </tr>
                         </tbody>

@@ -19,23 +19,27 @@
             
             <div class="form-group">
                 <label>Base Point No:</label>
-                <input type="number" id="base-point" class="form-control" placeholder="Enter base point number" value="1">
+                <input type="number" id="base-point" class="form-control" placeholder="Enter base point number" value="1" min="1" max="9999"
+                       title="رقم نقطة البداية المعلومة في الملف - نقطة الانطلاق">
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="form-group">
                     <label>Distance:</label>
-                    <input type="number" id="implant-distance" class="form-control" step="0.001" placeholder="Distance to implant">
+                    <input type="number" id="implant-distance" class="form-control" step="0.001" placeholder="Distance to implant" min="0.001" max="99999.999"
+                           title="المسافة الأفقية من نقطة البداية إلى النقطة الجديدة - مطلوبة، أكبر من صفر">
                 </div>
                 <div class="form-group">
                     <label>Bearing (grads):</label>
-                    <input type="number" id="implant-bearing" class="form-control" step="0.0001" placeholder="Bearing direction">
+                    <input type="number" id="implant-bearing" class="form-control" step="0.0001" placeholder="Bearing direction" min="0" max="399.9999"
+                           title="السمت (الاتجاه) من نقطة البداية إلى النقطة الجديدة - بالـ grads (0-400)">
                 </div>
             </div>
             
             <div class="form-group">
                 <label>Height (optional):</label>
-                <input type="number" id="implant-height" class="form-control" step="0.01" placeholder="Height">
+                <input type="number" id="implant-height" class="form-control" step="0.01" placeholder="Height" min="-500" max="10000"
+                       title="ارتفاع النقطة الجديدة - اختياري، إذا ترك فارغاً سيستخدم ارتفاع نقطة البداية">
             </div>
             
             <button onclick="calculateImplant()" class="btn btn-primary">[ CALCULATE ]</button>

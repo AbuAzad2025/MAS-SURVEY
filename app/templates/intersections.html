@@ -28,33 +28,45 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="form-group">
                     <label>P1 Y:</label>
-                    <input type="number" id="p1-y" class="form-control" step="0.001">
+                    <input type="number" id="p1-y" class="form-control" step="0.001"
+                           placeholder="إحداثي Y للنقطة 1"
+                           title="إحداثي Y للنقطة الأولى">
                 </div>
                 <div class="form-group">
                     <label>P1 X:</label>
-                    <input type="number" id="p1-x" class="form-control" step="0.001">
+                    <input type="number" id="p1-x" class="form-control" step="0.001"
+                           placeholder="إحداثي X للنقطة 1"
+                           title="إحداثي X للنقطة الأولى">
                 </div>
             </div>
             
             <div class="form-group" id="bearing1-group">
                 <label id="bearing1-label">Line 1 Bearing (grads):</label>
-                <input type="number" id="bearing1" class="form-control" step="0.0001">
+                <input type="number" id="bearing1" class="form-control" step="0.0001" min="0" max="399.9999"
+                       placeholder="0.0000 - 399.9999 grads"
+                       title="السمت أو البعد للخط/الدائرة الأولى">
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="form-group">
                     <label>P2 Y:</label>
-                    <input type="number" id="p2-y" class="form-control" step="0.001">
+                    <input type="number" id="p2-y" class="form-control" step="0.001"
+                           placeholder="إحداثي Y للنقطة 2"
+                           title="إحداثي Y للنقطة الثانية">
                 </div>
                 <div class="form-group">
                     <label>P2 X:</label>
-                    <input type="number" id="p2-x" class="form-control" step="0.001">
+                    <input type="number" id="p2-x" class="form-control" step="0.001"
+                           placeholder="إحداثي X للنقطة 2"
+                           title="إحداثي X للنقطة الثانية">
                 </div>
             </div>
             
             <div class="form-group" id="bearing2-group">
                 <label id="bearing2-label">Line 2 Bearing (grads):</label>
-                <input type="number" id="bearing2" class="form-control" step="0.0001">
+                <input type="number" id="bearing2" class="form-control" step="0.0001" min="0" max="399.9999"
+                       placeholder="0.0000 - 399.9999 grads"
+                       title="السمت أو البعد للخط/الدائرة الثانية">
             </div>
             
             <button onclick="calculateIntersection()" class="btn btn-primary">[ CALCULATE ]</button>

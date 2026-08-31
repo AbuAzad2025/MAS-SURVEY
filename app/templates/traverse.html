@@ -42,21 +42,33 @@
                 </thead>
                 <tbody id="traverse-tbody">
                     <tr>
-                        <td><input type="number" class="form-control" name="point_no[]" value="1" min="1"></td>
-                        <td><input type="number" class="form-control" name="y[]" step="0.001" placeholder="Y"></td>
-                        <td><input type="number" class="form-control" name="x[]" step="0.001" placeholder="X"></td>
-                        <td><input type="number" class="form-control" name="h[]" step="0.001" placeholder="H"></td>
-                        <td><input type="number" class="form-control" name="azimuth[]" step="0.0001" placeholder="Azimuth"></td>
-                        <td><input type="number" class="form-control" name="distance[]" step="0.001" placeholder="Dist"></td>
+                        <td><input type="number" class="form-control" name="point_no[]" value="1" min="1" max="9999"
+                                   title="رقم النقطة في العبور"></td>
+                        <td><input type="number" class="form-control" name="y[]" step="0.001" placeholder="Y"
+                                   title="إحداثي Y للنقطة"></td>
+                        <td><input type="number" class="form-control" name="x[]" step="0.001" placeholder="X"
+                                   title="إحداثي X للنقطة"></td>
+                        <td><input type="number" class="form-control" name="h[]" step="0.001" placeholder="H"
+                                   title="ارتفاع النقطة"></td>
+                        <td><input type="number" class="form-control" name="azimuth[]" step="0.0001" placeholder="Azimuth" min="0" max="399.9999"
+                                   title="السمت المقاس من هذه النقطة إلى النقطة التالية - بالـ grads"></td>
+                        <td><input type="number" class="form-control" name="distance[]" step="0.001" placeholder="Dist" min="0.001" max="99999.999"
+                                   title="المسافة المقاسة من هذه النقطة إلى النقطة التالية - مطلوبة"></td>
                         <td><button onclick="removeTraversePoint(this)" class="btn" style="padding:2px 8px;">X</button></td>
                     </tr>
                     <tr>
-                        <td><input type="number" class="form-control" name="point_no[]" value="2" min="1"></td>
-                        <td><input type="number" class="form-control" name="y[]" step="0.001" placeholder="Y"></td>
-                        <td><input type="number" class="form-control" name="x[]" step="0.001" placeholder="X"></td>
-                        <td><input type="number" class="form-control" name="h[]" step="0.001" placeholder="H"></td>
-                        <td><input type="number" class="form-control" name="azimuth[]" step="0.0001" placeholder="Azimuth"></td>
-                        <td><input type="number" class="form-control" name="distance[]" step="0.001" placeholder="Dist"></td>
+                        <td><input type="number" class="form-control" name="point_no[]" value="2" min="1" max="9999"
+                                   title="رقم النقطة في العبور"></td>
+                        <td><input type="number" class="form-control" name="y[]" step="0.001" placeholder="Y"
+                                   title="إحداثي Y للنقطة"></td>
+                        <td><input type="number" class="form-control" name="x[]" step="0.001" placeholder="X"
+                                   title="إحداثي X للنقطة"></td>
+                        <td><input type="number" class="form-control" name="h[]" step="0.001" placeholder="H"
+                                   title="ارتفاع النقطة"></td>
+                        <td><input type="number" class="form-control" name="azimuth[]" step="0.0001" placeholder="Azimuth" min="0" max="399.9999"
+                                   title="السمت المقاس من هذه النقطة إلى النقطة التالية - بالـ grads"></td>
+                        <td><input type="number" class="form-control" name="distance[]" step="0.001" placeholder="Dist" min="0.001" max="99999.999"
+                                   title="المسافة المقاسة من هذه النقطة إلى النقطة التالية - مطلوبة"></td>
                         <td><button onclick="removeTraversePoint(this)" class="btn" style="padding:2px 8px;">X</button></td>
                     </tr>
                 </tbody>

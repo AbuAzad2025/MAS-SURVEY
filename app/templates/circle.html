@@ -34,37 +34,51 @@
             <div id="circle-fields">
                 <div class="form-group" id="value1-group">
                     <label id="value1-label">Value 1:</label>
-                    <input type="number" id="circle-value1" class="form-control" step="0.001">
+                    <input type="number" id="circle-value1" class="form-control" step="0.001" min="0.001" max="99999.999"
+                           placeholder="أدخل القيمة الأولى">
                 </div>
                 <div class="form-group" id="value2-group" style="display: none;">
                     <label id="value2-label">Value 2:</label>
-                    <input type="number" id="circle-value2" class="form-control" step="0.001">
+                    <input type="number" id="circle-value2" class="form-control" step="0.001" min="0.001" max="99999.999"
+                           placeholder="أدخل القيمة الثانية (اختياري)">
                 </div>
                 <div id="center-points-section" style="display: none;">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                         <div class="form-group">
                             <label>P1 Y:</label>
-                            <input type="number" id="p1-y" class="form-control" step="0.001">
+                            <input type="number" id="p1-y" class="form-control" step="0.001"
+                                   placeholder="إحداثي Y للنقطة 1"
+                                   title="إحداثي Y للنقطة الأولى على المحيط">
                         </div>
                         <div class="form-group">
                             <label>P1 X:</label>
-                            <input type="number" id="p1-x" class="form-control" step="0.001">
+                            <input type="number" id="p1-x" class="form-control" step="0.001"
+                                   placeholder="إحداثي X للنقطة 1"
+                                   title="إحداثي X للنقطة الأولى على المحيط">
                         </div>
                         <div class="form-group">
                             <label>P2 Y:</label>
-                            <input type="number" id="p2-y" class="form-control" step="0.001">
+                            <input type="number" id="p2-y" class="form-control" step="0.001"
+                                   placeholder="إحداثي Y للنقطة 2"
+                                   title="إحداثي Y للنقطة الثانية على المحيط">
                         </div>
                         <div class="form-group">
                             <label>P2 X:</label>
-                            <input type="number" id="p2-x" class="form-control" step="0.001">
+                            <input type="number" id="p2-x" class="form-control" step="0.001"
+                                   placeholder="إحداثي X للنقطة 2"
+                                   title="إحداثي X للنقطة الثانية على المحيط">
                         </div>
                         <div class="form-group">
                             <label>P3 Y:</label>
-                            <input type="number" id="p3-y" class="form-control" step="0.001">
+                            <input type="number" id="p3-y" class="form-control" step="0.001"
+                                   placeholder="إحداثي Y للنقطة 3"
+                                   title="إحداثي Y للنقطة الثالثة على المحيط">
                         </div>
                         <div class="form-group">
                             <label>P3 X:</label>
-                            <input type="number" id="p3-x" class="form-control" step="0.001">
+                            <input type="number" id="p3-x" class="form-control" step="0.001"
+                                   placeholder="إحداثي X للنقطة 3"
+                                   title="إحداثي X للنقطة الثالثة على المحيط">
                         </div>
                     </div>
                 </div>
