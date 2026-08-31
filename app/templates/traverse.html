@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - Travers{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">[ T R A V E R S E ] - Bowditch Adjustment</div>
+    
+    <div class="card-body">
+        <div class="info-bar" style="margin-bottom: 15px;">
+            <div>
+                <span class="info-label">FILE: </span>
+                <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
+            </div>
+        </div>
+        
+        <div class="dos-box">
+            <div class="dos-header">Traverse Data Input:</div>
+            <p style="font-size: 12px; color: #888; margin-bottom: 15px;">
+                Enter observed points with Azimuth (grads) and Distance (meters)
+            </p>
+            
+            <table class="data-table" id="traverse-table">
+                <thead>
+                    <tr>
+                        <th>Point No</th>
+                        <th>Y (East)</th>
+                        <th>X (North)</th>
+                        <th>Height</th>
+                        <th>Azimuth (grads)</th>
+                        <th>Distance (m)</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="traverse-tbody">
+                    <tr>
+                        <td><input type="number" class="form-control" name="point_no[]" value="1" min="1"></td>
+                        <td><input type="number" class="form-control" name="y[]" step="0.001" placeholder="Y"></td>
+                        <td><input type="number" class="form-control" name="x[]" step="0.001" placeholder="X"></td>
+                        <td><input type="number" class="form-control" name="h[]" step="0.001" placeholder="H"></td>
+                        <td><input type="number" class="form-control" name="azimuth[]" step="0.0001" placeholder="Azimuth"></td>
+                        <td><input type="number" class="form-control" name="distance[]" step="0.001" placeholder="Dist"></td>
+                        <td><button onclick="removeTraversePoint(this)" class="btn" style="padding:2px 8px;">X</button></td>
+                    </tr>
+                    <tr>
+                        <td><input type="number" class="form-control" name="point_no[]" value="2" min="1"></td>
+                        <td><input type="number" class="form-control" name="y[]" step="0.001" placeholder="Y"></td>
+                        <td><input type="number" class="form-control" name="x[]" step="0.001" placeholder="X"></td>
+                        <td><input type="number" class="form-control" name="h[]" step="0.001" placeholder="H"></td>
+                        <td><input type="number" class="form-control" name="azimuth[]" step="0.0001" placeholder="Azimuth"></td>
+                        <td><input type="number" class="form-control" name="distance[]" step="0.001" placeholder="Dist"></td>
+                        <td><button onclick="removeTraversePoint(this)" class="btn" style="padding:2px 8px;">X</button></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 10px;">
+                <button onclick="addTraversePoint()" class="btn">+ ADD POINT</button>
+            </div>
+            
+            <div style="margin-top: 20px; border-top: 1px solid #00ff4133; padding-top: 15px;">
+                <h4 style="margin-bottom: 10px;">Known Coordinates (Optional):</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Start Point Y:</label>
+                        <input type="number" id="start-y" class="form-control" step="0.001" placeholder="Start Y">
+                    </div>
+                    <div class="form-group">
+                        <label>Start Point X:</label>
+                        <input type="number" id="start-x" class="form-control" step="0.001" placeholder="Start X">
+                    </div>
+                    <div class="form-group">
+                        <label>End Point Y:</label>
+                        <input type="number" id="end-y" class="form-control" step="0.001" placeholder="End Y">
+                    </div>
+                    <div class="form-group">
+                        <label>End Point X:</label>
+                        <input type="number" id="end-x" class="form-control" step="0.001" placeholder="End X">
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button onclick="calculateTraverse()" class="btn btn-primary">[ CALCULATE TRAVERSE ]</button>
+            </div>
+        </div>
+        
+        <div id="traverse-result" class="dos-box" style="display: none; margin-top: 15px;">
+            <div class="dos-header">Traverse Adjustment Results:</div>
+            
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px;">
+                <div class="result-box">
+                    <div class="result-label">Total Distance</div>
+                    <div class="result-value" id="total-distance">0.00 m</div>
+                </div>
+                <div class="result-box">
+                    <div class="result-label">Linear Misclosure</div>
+                    <div class="result-value" id="linear-misclosure">0.00 m</div>
+                </div>
+                <div class="result-box">
+                    <div class="result-label">Precision Ratio</div>
+                    <div class="result-value" id="precision-ratio">0</div>
+                </div>
+                <div class="result-box">
+                    <div class="result-label">Closure Error Y</div>
+                    <div class="result-value" id="closure-error-y">0.00</div>
+                </div>
+                <div class="result-box">
+                    <div class="result-label">Closure Error X</div>
+                    <div class="result-value" id="closure-error-x">0.00</div>
+                </div>
+            </div>
+            
+            <div id="traverse-points-result" style="max-height: 400px; overflow-y: auto;"></div>
+            
+            <div style="margin-top: 15px;">
+                <button onclick="saveTraverseResults()" class="btn btn-primary">[ SAVE RESULTS ]</button>
+                <button onclick="printTraverseResults()" class="btn">[ PRINT ]</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{{ '/' }}" class="btn">[ BACK TO MAIN MENU ]</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var traverseResultData = null;
+
+function addTraversePoint() {
+    var tbody = document.getElementById('traverse-tbody');
+    var rows = tbody.querySelectorAll('tr');
+    var nextNo = 1;
+    if (rows.length > 0) {
+        var lastNoInput = rows[rows.length - 1].querySelector('input[name="point_no[]"]');
+        nextNo = (parseInt(lastNoInput.value) || 0) + 1;
+    }
+    
+    var row = document.createElement('tr');
+    row.innerHTML = `
+        <td><input type="number" class="form-control" name="point_no[]" value="${nextNo}" min="1"></td>
+        <td><input type="number" class="form-control" name="y[]" step="0.001" placeholder="Y"></td>
+        <td><input type="number" class="form-control" name="x[]" step="0.001" placeholder="X"></td>
+        <td><input type="number" class="form-control" name="h[]" step="0.001" placeholder="H"></td>
+        <td><input type="number" class="form-control" name="azimuth[]" step="0.0001" placeholder="Azimuth"></td>
+        <td><input type="number" class="form-control" name="distance[]" step="0.001" placeholder="Dist"></td>
+        <td><button onclick="removeTraversePoint(this)" class="btn" style="padding:2px 8px;">X</button></td>
+    `;
+    tbody.appendChild(row);
+}
+
+function removeTraversePoint(btn) {
+    var tbody = document.getElementById('traverse-tbody');
+    if (tbody.rows.length > 2) {
+        btn.closest('tr').remove();
+    }
+}
+
+function getTraverseData() {
+    var tbody = document.getElementById('traverse-tbody');
+    var rows = tbody.querySelectorAll('tr');
+    var points = [];
+    
+    rows.forEach(function(row) {
+        var inputs = row.querySelectorAll('input');
+        var point = {
+            no: parseInt(inputs[0].value) || 0,
+            y: parseFloat(inputs[1].value) || 0,
+            x: parseFloat(inputs[2].value) || 0,
+            h: parseFloat(inputs[3].value) || 0,
+            azimuth: parseFloat(inputs[4].value) || 0,
+            distance: parseFloat(inputs[5].value) || 0
+        };
+        if (point.no > 0 && point.distance > 0) {
+            points.push(point);
+        }
+    });
+    
+    return points;
+}
+
+async function calculateTraverse() {
+    var points = getTraverseData();
+    
+    if (points.length < 2) {
+        MAS.showAlert('Please enter at least 2 points with distances', 'error');
+        return;
+    }
+    
+    var startY = parseFloat(document.getElementById('start-y').value) || null;
+    var startX = parseFloat(document.getElementById('start-x').value) || null;
+    var endY = parseFloat(document.getElementById('end-y').value) || null;
+    var endX = parseFloat(document.getElementById('end-x').value) || null;
+    
+    var knownStart = null;
+    var knownEnd = null;
+    
+    if (startY !== null && startX !== null) {
+        knownStart = {y: startY, x: startX};
+    }
+    if (endY !== null && endX !== null) {
+        knownEnd = {y: endY, x: endX};
+    }
+    
+    try {
+        var response = await fetch('/calculate/traverse', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                points: points,
+                known_start: knownStart,
+                known_end: knownEnd
+            })
+        });
+        
+        if (!response.ok) {
+            var err = await response.json();
+            MAS.showAlert(err.error || 'Traverse calculation failed', 'error');
+            return;
+        }
+        
+        var result = await response.json();
+        traverseResultData = result;
+        
+        document.getElementById('total-distance').textContent = result.total_distance.toFixed(2) + ' m';
+        document.getElementById('linear-misclosure').textContent = result.linear_misclosure.toFixed(4) + ' m';
+        document.getElementById('precision-ratio').textContent = '1:' + Math.round(result.precision_ratio);
+        document.getElementById('closure-error-y').textContent = result.closure_error_y.toFixed(4);
+        document.getElementById('closure-error-x').textContent = result.closure_error_x.toFixed(4);
+        
+        var html = '<table class="data-table" style="width:100%;"><thead><tr>';
+        html += '<th>Pt</th><th>Y</th><th>X</th><th>H</th>';
+        html += '<th>ΔY</th><th>ΔX</th><th>Dist</th>';
+        html += '<th>CorY</th><th>CorX</th>';
+        html += '</tr></thead><tbody>';
+        
+        result.adjusted_points.forEach(function(p) {
+            html += '<tr>';
+            html += '<td>' + p.no + '</td>';
+            html += '<td>' + p.y.toFixed(3) + '</td>';
+            html += '<td>' + p.x.toFixed(3) + '</td>';
+            html += '<td>' + (p.h || 0).toFixed(3) + '</td>';
+            html += '<td>' + (p.delta_y || 0).toFixed(3) + '</td>';
+            html += '<td>' + (p.delta_x || 0).toFixed(3) + '</td>';
+            html += '<td>' + (p.distance || 0).toFixed(3) + '</td>';
+            html += '<td>' + (p.correction_y || 0).toFixed(4) + '</td>';
+            html += '<td>' + (p.correction_x || 0).toFixed(4) + '</td>';
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table>';
+        document.getElementById('traverse-points-result').innerHTML = html;
+        document.getElementById('traverse-result').style.display = 'block';
+        
+    } catch (error) {
+        MAS.showAlert('Error: ' + error.message, 'error');
+    }
+}
+
+function saveTraverseResults() {
+    if (!traverseResultData || !traverseResultData.adjusted_points) {
+        MAS.showAlert('No results to save', 'error');
+        return;
+    }
+    
+    var points = traverseResultData.adjusted_points.map(function(p) {
+        return {
+            no: p.no,
+            y: p.y,
+            x: p.x,
+            h: p.h || 0
+        };
+    });
+    
+    MAS.savePoints(points, function(result) {
+        if (result.count > 0) {
+            MAS.showAlert(result.count + ' adjusted points saved successfully', 'success');
+        }
+    });
+}
+
+function printTraverseResults() {
+    if (!traverseResultData) {
+        MAS.showAlert('No results to print', 'error');
+        return;
+    }
+    
+    var printContent = '';
+    
+    printContent += '====================================================\n';
+    printContent += 'SURVEYING SYSTEMS\n';
+    printContent += 'LICENCED SURVEYER No. 000\n';
+    printContent += 'RAMALLAH P.O.BOX 0000\n';
+    printContent += 'TELEPHONE: 0562150193\n';
+    printContent += 'HEADER FOR PRINTING HERE\n';
+    printContent += '====================================================\n';
+    
+    printContent += '\nB O W D I T C H   T R A V E R S E\n';
+    printContent += '====================================================\n\n';
+    
+    printContent += 'TOTAL DISTANCE     : ' + traverseResultData.total_distance.toFixed(2) + ' m\n';
+    printContent += 'LINEAR MISCLOSURE  : ' + traverseResultData.linear_misclosure.toFixed(4) + ' m\n';
+    printContent += 'PRECISION RATIO   : 1:' + Math.round(traverseResultData.precision_ratio) + '\n';
+    printContent += 'CLOSURE ERROR Y    : ' + traverseResultData.closure_error_y.toFixed(4) + '\n';
+    printContent += 'CLOSURE ERROR X    : ' + traverseResultData.closure_error_x.toFixed(4) + '\n';
+    printContent += '\n====================================================\n';
+    printContent += 'POINT     Y           X           H\n';
+    printContent += '-----     ---------    ---------   -------\n';
+    
+    traverseResultData.adjusted_points.forEach(function(p) {
+        var yStr = p.y.toFixed(3).padStart(12);
+        var xStr = p.x.toFixed(3).padStart(12);
+        var hStr = (p.h || 0).toFixed(3).padStart(12);
+        printContent += p.no.toString().padStart(5) + '     ' + yStr + '    ' + xStr + '   ' + hStr + '\n';
+    });
+    
+    printContent += '\n====================================================\n';
+    
+    var printWindow = window.open('', '_blank');
+    printWindow.document.write('<!DOCTYPE html><html><head><title>Print - MAS</title>');
+    printWindow.document.write('<style>body{font-family:"Courier New",monospace;margin:20px;white-space:pre;}</style>');
+    printWindow.document.write('</head><body>' + printContent + '</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
+</script>
+{% endblock %}

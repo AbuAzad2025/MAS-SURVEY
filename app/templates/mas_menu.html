@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - القائمة الرئيسية{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">[ M A S &nbsp; M E N U ]</div>
+    
+    <div class="file-selector">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <select id="file-select" onchange="handleFileChange(this.value)" style="flex: 1; min-width: 200px;">
+                <option value="">-- اختر ملف --</option>
+                <option value="new">+ ملف جديد</option>
+                {% for f in files %}
+                <option value="{{ f.name }}" {% if file_info and file_info.name == f.name %}selected{% endif %}>{{ f.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <label class="btn" style="cursor: pointer;">
+                [ BROWSE ]
+                <input type="file" id="file-upload" accept=".DTF,.dtf" onchange="uploadFile(this)" style="display: none;">
+            </label>
+        </div>
+        
+        {% if upload_result %}
+        <div class="alert alert-success" style="margin-top: 10px;">
+            تم رفع الملف بنجاح! {{ upload_result.points_count }} نقطة
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="menu-grid">
+        <a href="{{ url_for('main.work_mode') }}" class="menu-item">
+            <div class="number">1</div>
+            <div class="text">WORK MODE</div>
+        </a>
+        
+        <a href="{{ url_for('files.list_files') }}" class="menu-item">
+            <div class="number">2</div>
+            <div class="text">DATA FILES</div>
+        </a>
+        
+        <a href="{{ url_for('main.polar') }}" class="menu-item">
+            <div class="number">3</div>
+            <div class="text">POLAR</div>
+        </a>
+        
+        <a href="{{ url_for('main.offsets') }}" class="menu-item">
+            <div class="number">4</div>
+            <div class="text">OFFSETS</div>
+        </a>
+        
+        <a href="{{ url_for('main.circle') }}" class="menu-item">
+            <div class="number">5</div>
+            <div class="text">CIRCLE</div>
+        </a>
+        
+        <a href="{{ url_for('main.intersections') }}" class="menu-item">
+            <div class="number">6</div>
+            <div class="text">INTERSECTIONS</div>
+        </a>
+        
+        <a href="{{ url_for('main.implants') }}" class="menu-item">
+            <div class="number">7</div>
+            <div class="text">IMPLANTATIONS</div>
+        </a>
+        
+        <a href="{{ url_for('main.area') }}" class="menu-item">
+            <div class="number">8</div>
+            <div class="text">AREA</div>
+        </a>
+        
+        <a href="{{ url_for('main.plotting') }}" class="menu-item">
+            <div class="number">9</div>
+            <div class="text">PLOTTING</div>
+        </a>
+        
+        <a href="{{ url_for('main.plan') }}" class="menu-item">
+            <div class="number">0</div>
+            <div class="text">PLAN ON SCREEN</div>
+        </a>
+    </div>
+    
+    <div class="info-bar">
+        <div>
+            <span class="info-label">FILE: </span>
+            <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
+        </div>
+        <div>
+            <span class="info-label">POINTS: </span>
+            <span class="info-value">{{ file_info.no_of_points if file_info else '0' }}</span>
+        </div>
+        <div>
+            <span class="info-label">UNIT: </span>
+            <span class="info-value">{{ settings.angle_unit if settings.angle_unit else 'GRADS' }}</span>
+        </div>
+        <div>
+            <a href="{{ url_for('main.index') }}" class="btn" style="padding: 5px 15px;">[ HOME ]</a>
+            <button onclick="showGuide()" class="btn" style="padding: 5px 15px; cursor: pointer;">[ USER GUIDE ]</button>
+        </div>
+    </div>
+</div>
+
+<!-- Guide Modal -->
+<div id="guide-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10000; overflow:auto;">
+    <div style="max-width:950px; margin:20px auto; background:#001a00; border:2px solid #00ff41; padding:25px 30px; position:relative;">
+        
+        <!-- Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid #004400;">
+            <button onclick="goHome()" style="background:#001a00; border:1px solid #00ff41; color:#00ff41; padding:8px 20px; cursor:pointer; font-family:inherit; font-size:13px;">🏠 HOME</button>
+            <h2 style="color:#00ff41; margin:0; font-family:Share Tech Mono,monospace; font-size:20px; letter-spacing:2px;">📘 MAS - دليل الاستخدام</h2>
+            <button onclick="closeGuide()" style="background:#001a00; border:1px solid #00ff41; color:#00ff41; padding:8px 20px; cursor:pointer; font-family:inherit; font-size:13px;">✕ CLOSE</button>
+        </div>
+        
+        <!-- Navigation Tabs -->
+        <div id="guide-tabs" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:20px;"></div>
+        
+        <!-- Content -->
+        <div id="guide-content" style="color:#00dd33; font-family:Share Tech Mono,monospace; font-size:15px; line-height:1.8; max-height:55vh; overflow-y:auto; padding:15px; border:1px solid #004400; background:#000800;"></div>
+        
+        <!-- Navigation Buttons -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:15px; border-top:1px solid #004400;">
+            <button id="guide-prev" onclick="guidePrev()" style="background:#001a00; border:1px solid #00ff41; color:#00ff41; padding:10px 25px; cursor:pointer; font-family:inherit; font-size:14px;">◄ السابق</button>
+            <span id="guide-counter" style="color:#00ff41; font-family:Share Tech Mono,monospace;"></span>
+            <button id="guide-next" onclick="guideNext()" style="background:#001a00; border:1px solid #00ff41; color:#00ff41; padding:10px 25px; cursor:pointer; font-family:inherit; font-size:14px;">التالي ►</button>
+        </div>
+        
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var guideSections = [];
+var currentSection = 0;
+
+function showGuide() {
+    document.getElementById('guide-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    
+    if (guideSections.length === 0) {
+        fetch('/api/guide')
+        .then(response => response.text())
+        .then(html => {
+            parseAndDisplayGuide(html);
+        })
+        .catch(err => {
+            document.getElementById('guide-content').innerHTML = '<p style="color:red;">Error loading guide</p>';
+        });
+    } else {
+        displaySection(0);
+    }
+}
+
+function parseAndDisplayGuide(html) {
+    // Split by h2 tags to create sections
+    var temp = document.createElement('div');
+    temp.innerHTML = html;
+    
+    var headings = temp.querySelectorAll('h2');
+    guideSections = [];
+    
+    if (headings.length > 0) {
+        headings.forEach(function(heading, index) {
+            var section = {};
+            section.title = heading.textContent;
+            
+            // Get all content until next h2 or end
+            var content = [];
+            var nextEl = heading.nextElementSibling;
+            while (nextEl && nextEl.tagName !== 'H2') {
+                content.push(nextEl.outerHTML);
+                nextEl = nextEl.nextElementSibling;
+            }
+            section.content = content.join('');
+            guideSections.push(section);
+        });
+    } else {
+        // Fallback: split by "---" separators
+        var parts = html.split(/<hr[^>]*>/i);
+        parts.forEach(function(part, index) {
+            guideSections.push({
+                title: 'القسم ' + (index + 1),
+                content: part
+            });
+        });
+    }
+    
+    createTabs();
+    displaySection(0);
+}
+
+function createTabs() {
+    var tabsContainer = document.getElementById('guide-tabs');
+    tabsContainer.innerHTML = '';
+    
+    guideSections.forEach(function(section, index) {
+        var btn = document.createElement('button');
+        btn.textContent = section.title.substring(0, 15);
+        btn.style.cssText = 'background:#001a00; border:1px solid #004400; color:#00aa33; padding:6px 12px; cursor:pointer; font-family:inherit; font-size:11px;';
+        btn.onclick = function() { displaySection(index); };
+        btn.onmouseover = function() { this.style.borderColor = '#00ff41'; this.style.color = '#00ff41'; };
+        btn.onmouseout = function() { this.style.borderColor = '#004400'; this.style.color = '#00aa33'; };
+        tabsContainer.appendChild(btn);
+    });
+}
+
+function displaySection(index) {
+    if (index < 0) index = 0;
+    if (index >= guideSections.length) index = guideSections.length - 1;
+    
+    currentSection = index;
+    var section = guideSections[currentSection];
+    
+    document.getElementById('guide-content').innerHTML = '<h3 style="color:#00ff41; margin-top:0;">' + section.title + '</h3>' + section.content;
+    document.getElementById('guide-content').scrollTop = 0;
+    
+    // Update counter
+    document.getElementById('guide-counter').textContent = (currentSection + 1) + ' / ' + guideSections.length;
+    
+    // Update buttons
+    document.getElementById('guide-prev').disabled = currentSection === 0;
+    document.getElementById('guide-next').disabled = currentSection === guideSections.length - 1;
+    
+    // Highlight current tab
+    var tabs = document.getElementById('guide-tabs').children;
+    for (var i = 0; i < tabs.length; i++) {
+        if (i === currentSection) {
+            tabs[i].style.borderColor = '#00ff41';
+            tabs[i].style.color = '#00ff41';
+        } else {
+            tabs[i].style.borderColor = '#004400';
+            tabs[i].style.color = '#00aa33';
+        }
+    }
+}
+
+function guideNext() {
+    displaySection(currentSection + 1);
+}
+
+function guidePrev() {
+    displaySection(currentSection - 1);
+}
+
+function closeGuide() {
+    document.getElementById('guide-modal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function goHome() {
+    window.location.href = '/';
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+        return;
+    }
+    
+    var key = e.key;
+    
+    switch(key) {
+        case '1': window.location.href = '/work-mode'; break;
+        case '2': window.location.href = '/files'; break;
+        case '3': window.location.href = '/polar'; break;
+        case '4': window.location.href = '/offsets'; break;
+        case '5': window.location.href = '/circle'; break;
+        case '6': window.location.href = '/intersections'; break;
+        case '7': window.location.href = '/implants'; break;
+        case '8': window.location.href = '/area'; break;
+        case '9': window.location.href = '/plotting'; break;
+        case '0': window.location.href = '/plan'; break;
+        case 'h':
+        case 'H': window.location.href = '/'; break;
+        case 'g':
+        case 'G': showGuide(); break;
+        case 'Escape': closeGuide(); break;
+        case 'ArrowRight': guideNext(); break;
+        case 'ArrowLeft': guidePrev(); break;
+    }
+});
+
+function handleFileChange(filename) {
+    if (!filename) return;
+    if (filename === 'new') {
+        window.location.href = '/files/new';
+        return;
+    }
+    MAS.setCurrentFile(filename, function() {
+        location.reload();
+    });
+}
+
+function uploadFile(input) {
+    if (!input.files || !input.files[0]) return;
+    var file = input.files[0];
+    var formData = new FormData();
+    formData.append('file', file);
+    MAS.showAlert('جاري رفع الملف...', 'success');
+    fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            MAS.showAlert('خطأ: ' + data.error, 'error');
+        } else {
+            MAS.showAlert('تم رفع الملف بنجاح! ' + data.points_count + ' نقطة', 'success');
+            setTimeout(function() {
+                MAS.setCurrentFile(data.filename, function() {
+                    location.reload();
+                });
+            }, 1000);
+        }
+    })
+    .catch(error => {
+        MAS.showAlert('خطأ في رفع الملف', 'error');
+    });
+}
+</script>
+{% endblock %}

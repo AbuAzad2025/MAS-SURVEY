@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  mas-survey:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mas-survey
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - mas-data:/data
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-mas-survey-secret-key-2026}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  mas-data:
+    driver: local

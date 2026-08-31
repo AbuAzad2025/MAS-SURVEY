@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - التموضع{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">[ I M P L A N T A T I O N S ]</div>
+    
+    <div class="card-body">
+        <div class="info-bar" style="margin-bottom: 15px;">
+            <div>
+                <span class="info-label">FILE: </span>
+                <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
+            </div>
+        </div>
+        
+        <div class="dos-box">
+            <div class="dos-header">Implantation Data:</div>
+            
+            <div class="form-group">
+                <label>Base Point No:</label>
+                <input type="number" id="base-point" class="form-control" placeholder="Enter base point number" value="1">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group">
+                    <label>Distance:</label>
+                    <input type="number" id="implant-distance" class="form-control" step="0.001" placeholder="Distance to implant">
+                </div>
+                <div class="form-group">
+                    <label>Bearing (grads):</label>
+                    <input type="number" id="implant-bearing" class="form-control" step="0.0001" placeholder="Bearing direction">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Height (optional):</label>
+                <input type="number" id="implant-height" class="form-control" step="0.01" placeholder="Height">
+            </div>
+            
+            <button onclick="calculateImplant()" class="btn btn-primary">[ CALCULATE ]</button>
+        </div>
+        
+        <div id="implant-result" class="dos-box" style="display: none; margin-top: 15px;">
+            <div class="dos-header">Implanted Point:</div>
+            <div style="text-align: center; font-size: 14px;">
+                <div>Y = <span id="implant-y" style="color: var(--text-highlight);">0.000</span></div>
+                <div>X = <span id="implant-x" style="color: var(--text-highlight);">0.000</span></div>
+                <div>H = <span id="implant-h" style="color: var(--text-secondary);">0.000</span></div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{{ '/' }}" class="btn">[ BACK TO MAIN MENU ]</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function calculateImplant() {
+    const basePointNo = parseInt(document.getElementById('base-point').value) || 1;
+    const distance = parseFloat(document.getElementById('implant-distance').value) || 0;
+    const bearing = parseFloat(document.getElementById('implant-bearing').value) || 0;
+    const height = parseFloat(document.getElementById('implant-height').value) || 0;
+    
+    if (distance <= 0) {
+        MAS.showAlert('Please enter distance', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/calculate/implant', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                base_point_no: basePointNo,
+                distance: distance,
+                bearing: bearing,
+                height: height
+            })
+        });
+        
+        if (!response.ok) {
+            const err = await response.json();
+            MAS.showAlert(err.error || 'Calculation failed', 'error');
+            return;
+        }
+        
+        const result = await response.json();
+        
+        document.getElementById('implant-y').textContent = result.implant.y.toFixed(3);
+        document.getElementById('implant-x').textContent = result.implant.x.toFixed(3);
+        document.getElementById('implant-h').textContent = result.implant.h.toFixed(3);
+        document.getElementById('implant-result').style.display = 'block';
+    } catch (error) {
+        MAS.showAlert('Error: ' + error.message, 'error');
+    }
+}
+</script>
+{% endblock %}

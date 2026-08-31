@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - ملف جديد{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">[ N E W &nbsp; F I L E ]</div>
+    
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('files.new_file') }}">
+            <div class="dos-box">
+                <div class="dos-header">File Information:</div>
+                
+                <div class="form-group">
+                    <label for="name">File Name:</label>
+                    <input type="text" id="name" name="name" class="form-control" required 
+                           placeholder="example: survey_2024" autofocus>
+                </div>
+                
+                <div class="form-group">
+                    <label for="date">Date:</label>
+                    <input type="date" id="date" name="date" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label for="place">Place:</label>
+                    <input type="text" id="place" name="place" class="form-control" 
+                           placeholder="Work location">
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">[ CREATE FILE ]</button>
+                <a href="{{ url_for('files.list_files') }}" class="btn">[ CANCEL ]</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

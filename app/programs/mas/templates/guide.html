@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAS - User Guide</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .guide-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-green);
+        }
+        .guide-container h1 {
+            color: var(--primary);
+            font-family: var(--font-display);
+            font-size: 24px;
+            letter-spacing: 3px;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary);
+        }
+        .guide-container h2 {
+            color: var(--primary);
+            font-family: var(--font-display);
+            font-size: 16px;
+            letter-spacing: 2px;
+            margin: 30px 0 15px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-green);
+        }
+        .guide-container h3 {
+            color: var(--text-highlight);
+            font-family: var(--font-display);
+            font-size: 13px;
+            letter-spacing: 1px;
+            margin: 20px 0 10px 0;
+        }
+        .guide-container p {
+            margin: 10px 0;
+            line-height: 1.6;
+            color: var(--text-main);
+        }
+        .guide-container pre {
+            background: var(--bg-darker);
+            border: 1px solid var(--border-green);
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-size: 12px;
+            color: var(--primary);
+        }
+        .guide-container code {
+            background: var(--bg-darker);
+            padding: 2px 6px;
+            color: var(--primary);
+            font-family: var(--font-mono);
+        }
+        .guide-container table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 13px;
+        }
+        .guide-container th, .guide-container td {
+            border: 1px solid var(--border-green);
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .guide-container th {
+            background: var(--bg-darker);
+            color: var(--primary);
+            font-family: var(--font-display);
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+        .guide-container tr:nth-child(even) {
+            background: rgba(0, 255, 65, 0.03);
+        }
+        .guide-container strong {
+            color: var(--primary);
+        }
+        .guide-container hr {
+            border: none;
+            border-top: 1px solid var(--border-green);
+            margin: 30px 0;
+        }
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 8px 20px;
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            text-decoration: none;
+            font-family: var(--font-display);
+            font-size: 11px;
+            letter-spacing: 2px;
+        }
+        .back-btn:hover {
+            background: var(--primary);
+            color: var(--bg-darker);
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-title">SURVEYING SYSTEMS SUITE</div>
+        <div class="header-subtitle">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+        <div class="header-company">ALRAFIDEEN SURVEYING OFFICE</div>
+        <div class="header-contact">TEL: 0562150193</div>
+    </header>
+
+    <main class="main-content">
+        <a href="/mas" class="back-btn">[ BACK TO PROGRAM ]</a>
+        
+        <div class="guide-container">
+            {{ content|safe }}
+        </div>
+        
+        <a href="/mas" class="back-btn" style="margin-top: 20px;">[ BACK TO PROGRAM ]</a>
+    </main>
+
+    <footer class="footer">
+        <div>◆ SURVEYING SYSTEMS SUITE ◆ ALL RIGHTS RESERVED ◆</div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - أوضاع العمل{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">[ W O R K &nbsp; M O D E ]</div>
+    
+    <div class="card-body">
+        <div class="dos-box">
+            <div class="dos-header">Configuration:</div>
+            
+            <div class="form-group">
+                <label for="angle-unit">1- ANGULAR UNIT:</label>
+                <select id="angle-unit" class="form-control">
+                    <option value="GRADS" {% if settings.angle_unit == 'GRADS' %}selected{% endif %}>GRADS</option>
+                    <option value="DEGREES" {% if settings.angle_unit == 'DEGREES' %}selected{% endif %}>DEGREES</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="vertical-angle">2- VERTICAL ANGLE:</label>
+                <select id="vertical-angle" class="form-control">
+                    <option value="GRADS" {% if settings.vertical_angle == 'GRADS' %}selected{% endif %}>GRADS</option>
+                    <option value="DEGREES" {% if settings.vertical_angle == 'DEGREES' %}selected{% endif %}>DEGREES</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="printing">3- PRINTING:</label>
+                <select id="printing" class="form-control">
+                    <option value="YES" {% if settings.printing == 'YES' %}selected{% endif %}>YES</option>
+                    <option value="NO" {% if settings.printing == 'NO' %}selected{% endif %}>NO</option>
+                </select>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button onclick="saveWorkMode()" class="btn btn-primary">[ SAVE ]</button>
+            <a href="{{ '/' }}" class="btn">[ BACK TO MAIN MENU ]</a>
+        </div>
+    </div>
+</div>
+
+<script>
+function saveWorkMode() {
+    const settings = {
+        'angle_unit': document.getElementById('angle-unit').value,
+        'vertical_angle': document.getElementById('vertical-angle').value,
+        'printing': document.getElementById('printing').value
+    };
+    
+    MAS.saveSettings(settings, function() {
+        MAS.showAlert('Settings saved successfully', 'success');
+    });
+}
+</script>
+{% endblock %}

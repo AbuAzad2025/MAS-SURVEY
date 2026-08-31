@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - حساب المساحة{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">[ A R E A &nbsp; C A L C U L A T I O N ]</div>
+    
+    <div class="card-body">
+        {% if file_info and points %}
+        
+        <div class="info-bar" style="margin-bottom: 15px;">
+            <div>
+                <span class="info-label">FILE: </span>
+                <span class="info-value">{{ file_info.name }}</span>
+            </div>
+            <div>
+                <span class="info-label">POINTS: </span>
+                <span class="info-value">{{ points|length }}</span>
+            </div>
+        </div>
+        
+        <div id="area-result" class="dos-box" style="display: none; text-align: center; margin-bottom: 15px;">
+            <div style="font-size: 16px;">
+                <span class="info-label">AREA = </span>
+                <span id="area-value" style="color: var(--text-highlight); font-size: 18px;">0.00</span>
+                <span class="info-label">m2</span>
+            </div>
+            <div style="margin-top: 5px;">
+                <span class="info-label">PERIMETER = </span>
+                <span id="perimeter-value" style="color: var(--text-secondary);">0.00</span>
+                <span class="info-label">m</span>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="data-table" id="points-table">
+                <thead>
+                    <tr>
+                        <th>NO</th>
+                        <th>Y</th>
+                        <th>X</th>
+                        <th>H</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for point in points %}
+                    <tr>
+                        <td>{{ point.no or point.point_no }}</td>
+                        <td>{{ "%.2f"|format(point.y) }}</td>
+                        <td>{{ "%.2f"|format(point.x) }}</td>
+                        <td>{{ "%.2f"|format(point.h) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="text-align: center; margin-top: 15px;">
+            <button onclick="calculateArea()" class="btn btn-primary">[ CALCULATE AREA ]</button>
+            <button onclick="printArea()" class="btn">[ PRINT ]</button>
+        </div>
+        
+        {% else %}
+        <div class="alert alert-error">
+            {% if not file_info %}
+            No file selected. Please open a file first.
+            {% else %}
+            No points in this file.
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{{ '/' }}" class="btn">[ BACK TO MAIN MENU ]</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function calculateArea() {
+    const points = [];
+    const rows = document.querySelectorAll('#points-table tbody tr');
+    
+    rows.forEach((row) => {
+        const cells = row.querySelectorAll('td');
+        points.push({
+            y: parseFloat(cells[1].textContent) || 0,
+            x: parseFloat(cells[2].textContent) || 0
+        });
+    });
+    
+    if (points.length < 3) {
+        MAS.showAlert('Need at least 3 points to calculate area', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/calculate/area', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({points: points})
+        });
+        
+        if (!response.ok) {
+            const err = await response.json();
+            MAS.showAlert(err.error || 'Area calculation failed', 'error');
+            return;
+        }
+        
+        const result = await response.json();
+        
+        document.getElementById('area-value').textContent = result.area.toFixed(2);
+        document.getElementById('perimeter-value').textContent = result.perimeter.toFixed(2);
+        document.getElementById('area-result').style.display = 'block';
+        
+    } catch (error) {
+        MAS.showAlert('Error: ' + error.message, 'error');
+    }
+}
+
+function printArea() {
+    const area = document.getElementById('area-value').textContent;
+    const perimeter = document.getElementById('perimeter-value').textContent;
+    
+    let printContent = '';
+    
+    printContent += '====================================================\n';
+    printContent += 'SURVEYING SYSTEMS\n';
+    printContent += 'LICENCED SURVEYER No. 000\n';
+    printContent += 'RAMALLAH P.O.BOX 0000\n';
+    printContent += 'TELEPHONE: 0562150193\n';
+    printContent += 'HEADER FOR PRINTING HERE\n';
+    printContent += '====================================================\n';
+    
+    printContent += '\nA R E A &   P E R I M E T E R\n';
+    printContent += '====================================================\n\n';
+    printContent += 'AREA      = ' + area + ' m2\n';
+    printContent += 'PERIMETER = ' + perimeter + ' m\n';
+    printContent += '\n====================================================\n';
+    
+    var printWindow = window.open('', '_blank');
+    printWindow.document.write('<!DOCTYPE html><html><head><title>Print - MAS</title>');
+    printWindow.document.write('<style>body{font-family:"Courier New",monospace;margin:20px;white-space:pre;}</style>');
+    printWindow.document.write('</head><body>' + printContent + '</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
+</script>
+{% endblock %}
