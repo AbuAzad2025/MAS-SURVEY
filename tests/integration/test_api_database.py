@@ -220,10 +220,10 @@ class TestAPIDataConsistency:
 class TestAPIEdgeCases:
     """Test API edge cases with database."""
 
-    def test_delete_nonexistent_file_returns_success(self, client):
-        """Test deleting nonexistent file returns success (idempotent)."""
+    def test_delete_nonexistent_file_returns_error(self, client):
+        """Test deleting nonexistent file returns error."""
         response = client.delete('/api/files/nonexistent_file_xyz')
-        assert response.status_code == 200
+        assert response.status_code == 404
 
     def test_area_calculation_needs_3_points(self, client):
         """Test area calculation requires at least 3 points."""

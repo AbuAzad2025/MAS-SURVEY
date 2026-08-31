@@ -292,6 +292,9 @@ def file_detail(name):
     from app.shared.models import SurveyFile
     
     if request.method == 'DELETE':
+        file_info = SurveyFile.get_by_name(get_db(), name)
+        if not file_info:
+            return error_response('File not found', 404)
         SurveyFile.delete(get_db(), name)
         return success_response()
     
