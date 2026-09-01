@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - Admin Files{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        [ S U R V E Y &nbsp; F I L E S &nbsp; O V E R V I E W ]
+    </div>
+    
+    <div class="card-body">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+            <h3 style="color: #00ff41;">All Survey Files</h3>
+            <div>
+                <span style="color: #00ff41;">Total: {{ files|length }} files</span>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Date</th>
+                        <th>Place</th>
+                        <th>Points</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in files %}
+                    <tr>
+                        <td><strong>{{ file.name }}</strong></td>
+                        <td>{{ file.date or '---' }}</td>
+                        <td>{{ file.place or '---' }}</td>
+                        <td>{{ file.no_of_points or 0 }}</td>
+                        <td>{{ file.created_at or '---' }}</td>
+                        <td>
+                            <a href="{{ url_for('files.view_file', name=file.name) }}" class="btn" style="padding: 4px 8px; font-size: 11px;">View</a>
+                            <a href="{{ url_for('main.print_preview') }}" class="btn" style="padding: 4px 8px; font-size: 11px; margin-left: 5px;">Print</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #888;">No survey files found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

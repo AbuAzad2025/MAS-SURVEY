@@ -165,7 +165,25 @@ def api_stats():
 @super_admin_required
 def admin_settings():
     """System settings page."""
-    return render_template('admin/settings.html')
+    import sys
+    import os
+    
+    db = current_app.config['DATABASE']
+    settings = Settings.get_all(db)
+    
+    return render_template('admin/settings.html', 
+                         settings=settings,
+                         db_path=db,
+                         python_version=sys.version.split()[0])
+
+
+@admin_bp.route('/files')
+@super_admin_required
+def admin_files():
+    """Survey files overview."""
+    db = current_app.config['DATABASE']
+    files = SurveyFile.get_all(db)
+    return render_template('admin/files.html', files=files)
 
 
 @admin_bp.route('/logs')

@@ -9,6 +9,18 @@
     </div>
     
     <div class="card-body">
+        <!-- Admin Navigation -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #004400; flex-wrap: wrap;">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-primary" style="font-size: 12px;">[ DASHBOARD ]</a>
+            <a href="{{ url_for('admin.admin_files') }}" class="btn" style="font-size: 12px;">[ FILES ]</a>
+            <a href="{{ url_for('admin.admin_settings') }}" class="btn" style="font-size: 12px;">[ SETTINGS ]</a>
+            <a href="{{ url_for('admin.admin_logs') }}" class="btn" style="font-size: 12px;">[ LOGS ]</a>
+            <a href="{{ url_for('main.mas_menu') }}" class="btn" style="font-size: 12px;">[ MAS MENU ]</a>
+            <form action="{{ url_for('auth.logout') }}" method="POST" style="margin: 0;">
+                <button type="submit" class="btn" style="font-size: 12px; background: #1a0000; border-color: #ff4444;">[ LOGOUT ]</button>
+            </form>
+        </div>
+        
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
             <div class="stat-card" style="background: #001a00; border: 1px solid #00ff41; padding: 15px; border-radius: 5px; text-align: center;">
                 <div style="font-size: 24px; color: #00ff41; font-weight: bold;">{{ stats.total_users }}</div>
