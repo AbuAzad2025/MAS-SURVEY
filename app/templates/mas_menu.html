@@ -79,26 +79,42 @@
             <div class="number">0</div>
             <div class="text">PLAN ON SCREEN</div>
         </a>
-    </div>
-    
-    <div class="info-bar">
-        <div>
-            <span class="info-label">FILE: </span>
-            <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
+</div>
+        
+        <div class="info-bar">
+            <div>
+                <span class="info-label">FILE: </span>
+                <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
+            </div>
+            <div>
+                <span class="info-label">POINTS: </span>
+                <span class="info-value">{{ file_info.no_of_points if file_info else '0' }}</span>
+            </div>
+            <div>
+                <span class="info-label">UNIT: </span>
+                <span class="info-value">{{ settings.angle_unit if settings.angle_unit else 'GRADS' }}</span>
+            </div>
+            <div>
+                <span class="info-label" style="color: #00ff41;">USER: </span>
+                <span class="info-value" style="color: #00ff41;">{{ session.user_name or session.username }}</span>
+                <span class="info-label" style="margin-left: 10px; 
+                    {% if session.user_role == 'super_admin' %}color: #ff4444;
+                    {% elif session.user_role == 'registered' %}color: #00ffff;
+                    {% else %}color: #ffff00;{% endif %}">
+                    [{{ session.user_role }}]
+                </span>
+            </div>
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <a href="{{ url_for('main.index') }}" class="btn" style="padding: 5px 10px; font-size: 11px;">[ HOME ]</a>
+                <button onclick="showGuide()" class="btn" style="padding: 5px 10px; font-size: 11px;">[ GUIDE ]</button>
+                {% if session.user_role == 'super_admin' %}
+                <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="padding: 5px 10px; font-size: 11px; background: #1a0000; border-color: #ff4444;">[ ADMIN ]</a>
+                {% endif %}
+                <form action="{{ url_for('auth.logout') }}" method="POST" style="margin: 0;">
+                    <button type="submit" class="btn" style="padding: 5px 10px; font-size: 11px; background: #1a0000; border-color: #ff4444;">[ LOGOUT ]</button>
+                </form>
+            </div>
         </div>
-        <div>
-            <span class="info-label">POINTS: </span>
-            <span class="info-value">{{ file_info.no_of_points if file_info else '0' }}</span>
-        </div>
-        <div>
-            <span class="info-label">UNIT: </span>
-            <span class="info-value">{{ settings.angle_unit if settings.angle_unit else 'GRADS' }}</span>
-        </div>
-        <div>
-            <a href="{{ url_for('main.index') }}" class="btn" style="padding: 5px 15px;">[ HOME ]</a>
-            <button onclick="showGuide()" class="btn" style="padding: 5px 15px; cursor: pointer;">[ USER GUIDE ]</button>
-        </div>
-    </div>
 </div>
 
 <!-- Guide Modal -->

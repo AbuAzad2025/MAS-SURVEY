@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - System Logs{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        [ S Y S T E M &nbsp; L O G S ]
+    </div>
+    
+    <div class="card-body">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+            <h3 style="color: #00ff41;">Application Logs</h3>
+            <div>
+                <select id="log-level-filter" class="form-control" style="width: auto; display: inline-block;">
+                    <option value="">All Levels</option>
+                    <option value="ERROR">ERROR</option>
+                    <option value="WARNING">WARNING</option>
+                    <option value="INFO">INFO</option>
+                    <option value="DEBUG">DEBUG</option>
+                </select>
+                <button onclick="refreshLogs()" class="btn">[ REFRESH ]</button>
+                <button onclick="clearLogs()" class="btn" style="background: #ff4444;">[ CLEAR ]</button>
+            </div>
+        </div>
+        
+        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="data-table" id="logs-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Level</th>
+                        <th>Module</th>
+                        <th>Message</th>
+                        <th>User</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-tbody">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #888;">Loading logs...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="margin-top: 15px; text-align: center;">
+            <button onclick="loadMoreLogs()" class="btn">[ LOAD MORE ]</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let logsOffset = 0;
+const LOGS_LIMIT = 100;
+
+async function refreshLogs() {
+    logsOffset = 0;
+    await loadLogs(true);
+}
+
+async function loadMoreLogs() {
+    await loadLogs(false);
+}
+
+async function loadLogs(reset) {
+    if (reset) {
+        logsOffset = 0;
+        document.getElementById('logs-tbody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">Loading...</td></tr>';
+    }
+    
+    const level = document.getElementById('log-level-filter').value;
+    
+    try {
+        const response = await fetch('/admin/api/logs?offset=' + logsOffset + '&limit=' + LOGS_LIMIT + '&level=' + level);
+        const data = await response.json();
+        
+        if (reset) {
+            document.getElementById('logs-tbody').innerHTML = '';
+        }
+        
+        if (data.logs && data.logs.length > 0) {
+            data.logs.forEach(log => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${log.timestamp}</td>
+                    <td><span style="
+                        ${log.level === 'ERROR' ? 'color: #ff4444;' : ''}
+                        ${log.level === 'WARNING' ? 'color: #ffaa00;' : ''}
+                        ${log.level === 'INFO' ? 'color: #00ff41;' : ''}
+                        ${log.level === 'DEBUG' ? 'color: #888888;' : ''}
+                        ">${log.level}</span></td>
+                    <td>${log.module}</td>
+                    <td>${log.message}</td>
+                    <td>${log.username || '---'}</td>
+                    <td>${log.ip || '---'}</td>
+                `;
+                document.getElementById('logs-tbody').appendChild(row);
+            });
+            logsOffset += data.logs.length;
+        } else if (reset) {
+            document.getElementById('logs-tbody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No logs found</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading logs:', error);
+    }
+}
+
+async function clearLogs() {
+    if (!confirm('Clear all logs? This cannot be undone.')) return;
+    
+    try {
+        const response = await fetch('/admin/api/logs', { method: 'DELETE' });
+        const result = await response.json();
+        if (result.status === 'ok') {
+            refreshLogs();
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Initial load
+document.addEventListener('DOMContentLoaded', () => {
+    refreshLogs();
+});
+</script>
+{% endblock %}

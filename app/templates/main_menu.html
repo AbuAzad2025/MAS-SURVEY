@@ -99,6 +99,30 @@
                 <span class="info-value">0562150193</span>
             </div>
         </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #001a00; border: 1px solid #004400; border-radius: 5px; text-align: center;">
+            {% if session.user_id %}
+                <div style="color: #00ff41;">
+                    <strong>Logged in as: </strong>{{ session.user_name }} 
+                    <span style="
+                        {% if session.user_role == 'super_admin' %}color: #ff4444;
+                        {% elif session.user_role == 'registered' %}color: #00ffff;
+                        {% else %}color: #ffff00;{% endif %}
+                        ">[{{ session.user_role }}]</span>
+                </div>
+                <a href="{{ url_for('main.mas_menu') }}" class="btn btn-primary" style="margin-top: 10px;">[ ENTER MAS ]</a>
+                <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="margin-top: 10px; margin-left: 10px; 
+                    {% if session.user_role != 'super_admin' %}display: none;{% endif %}">[ ADMIN PANEL ]</a>
+            {% else %}
+                <div style="color: #ccc; margin-bottom: 10px;">
+                    ليس لديك حساب؟ إنشاء الحسابات يتم فقط عبر السوبر أدمن.
+                </div>
+                <div style="color: #888; font-size: 12px; margin-bottom: 10px;">
+                    تواصل مع: <strong style="color: #00ff41;">أبو أزاد</strong> | واتساب: <a href="https://wa.me/972562150193" target="_blank" style="color: #00ff41;">+972 56 215 0193</a>
+                </div>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary">[ LOGIN ]</a>
+            {% endif %}
+        </div>
     </div>
     
 </div>

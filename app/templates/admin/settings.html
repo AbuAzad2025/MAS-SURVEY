@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - Admin Settings{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        [ S Y S T E M &nbsp; S E T T I N G S ]
+    </div>
+    
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            
+            <div class="dos-box">
+                <div class="dos-header">General Settings</div>
+                
+                <div class="form-group">
+                    <label>Company Name:</label>
+                    <input type="text" id="setting-company" class="form-control" value="{{ settings.company_name or 'ALRAFIDEEN SURVEYING OFFICE' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label>Phone:</label>
+                    <input type="tel" id="setting-phone" class="form-control" value="{{ settings.phone or '0562150193' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label>Address:</label>
+                    <input type="text" id="setting-address" class="form-control" value="{{ settings.address or 'RAMALLAH' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label>Default Angle Unit:</label>
+                    <select id="setting-angle-unit" class="form-control">
+                        <option value="GRADS" {% if settings.angle_unit == 'GRADS' %}selected{% endif %}>Grads (0-400)</option>
+                        <option value="DEGREES" {% if settings.angle_unit == 'DEGREES' %}selected{% endif %}>Degrees (0-360)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Default Vertical Angle Unit:</label>
+                    <select id="setting-vertical-angle" class="form-control">
+                        <option value="GRADS" {% if settings.vertical_angle == 'GRADS' %}selected{% endif %}>Grads</option>
+                        <option value="DEGREES" {% if settings.vertical_angle == 'DEGREES' %}selected{% endif %}>Degrees</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Default Printing Format:</label>
+                    <select id="setting-printing" class="form-control">
+                        <option value="STANDARD" {% if settings.printing == 'STANDARD' %}selected{% endif %}>Standard</option>
+                        <option value="DETAILED" {% if settings.printing == 'DETAILED' %}selected{% endif %}>Detailed</option>
+                    </select>
+                </div>
+                
+                <button onclick="saveSettings()" class="btn btn-primary">[ SAVE SETTINGS ]</button>
+            </div>
+            
+            <div class="dos-box">
+                <div class="dos-header">System Information</div>
+                
+                <table style="width: 100%; font-size: 12px;">
+                    <tr><td>Application:</td><td style="text-align: right; color: #00ff41;">MAS Survey System</td></tr>
+                    <tr><td>Version:</td><td style="text-align: right; color: #00ff41;">1.0.0</td></tr>
+                    <tr><td>Framework:</td><td style="text-align: right; color: #00ff41;">Flask + SQLite</td></tr>
+                    <tr><td>Database:</td><td style="text-align: right; color: #00ff41;">{{ db_path }}</td></tr>
+                    <tr><td>Python:</td><td style="text-align: right; color: #00ff41;">{{ python_version }}</td></tr>
+                </table>
+                
+                <hr style="border-color: #004400; margin: 15px 0;">
+                
+                <h4 style="color: #00ff41;">Super Admin Contact</h4>
+                <p style="font-size: 12px; color: #ccc;">
+                    <strong>Name:</strong> أبو أزاد<br>
+                    <strong>WhatsApp:</strong> <a href="https://wa.me/972562150193" target="_blank" style="color: #00ff41;">+972 56 215 0193</a><br>
+                    <strong>Note:</strong> Account creation only via Super Admin
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function saveSettings() {
+    const data = {
+        company_name: document.getElementById('setting-company').value,
+        phone: document.getElementById('setting-phone').value,
+        address: document.getElementById('setting-address').value,
+        angle_unit: document.getElementById('setting-angle-unit').value,
+        vertical_angle: document.getElementById('setting-vertical-angle').value,
+        printing: document.getElementById('setting-printing').value
+    };
+    
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.error) {
+            alert('Error: ' + result.error);
+        } else {
+            alert('Settings saved successfully');
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

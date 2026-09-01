@@ -2,9 +2,11 @@
 MAS Main Routes - Single Source of Truth.
 All HTTP endpoints for the MAS application.
 """
-from flask import Blueprint, render_template, session, current_app, request, jsonify
+from flask import Blueprint, render_template, session, current_app, request, jsonify, redirect, url_for
 from app.shared.models import SurveyFile, SurveyPoint, Settings
+from app.routes.auth import login_required
 import os
+
 
 main_bp = Blueprint('main', __name__)
 
@@ -41,6 +43,7 @@ def index():
 
 
 @main_bp.route('/mas')
+@login_required
 def mas_menu():
     """MAS program main menu."""
     settings = get_settings()
@@ -57,6 +60,7 @@ def mas_menu():
 
 
 @main_bp.route('/work-mode')
+@login_required
 def work_mode():
     """Work mode settings page."""
     settings = get_settings()
@@ -64,6 +68,7 @@ def work_mode():
 
 
 @main_bp.route('/polar')
+@login_required
 def polar():
     """Polar survey page (Distomat/Tacheometry/Azimuth-Distance)."""
     file_info = get_current_file_info()
@@ -73,6 +78,7 @@ def polar():
 
 
 @main_bp.route('/offsets')
+@login_required
 def offsets():
     """Offsets calculation page."""
     file_info = get_current_file_info()
@@ -80,18 +86,21 @@ def offsets():
 
 
 @main_bp.route('/circle')
+@login_required
 def circle():
     """Circle/Arc calculations page."""
     return render_template('circle.html')
 
 
 @main_bp.route('/intersections')
+@login_required
 def intersections():
     """Intersections page (Two Lines/Distances)."""
     return render_template('intersections.html')
 
 
 @main_bp.route('/implants')
+@login_required
 def implants():
     """Implantations page (Polar/Offsets stake out)."""
     file_info = get_current_file_info()
@@ -99,6 +108,7 @@ def implants():
 
 
 @main_bp.route('/resection')
+@login_required
 def resection():
     """Resection page (3-point resection with Tienstra)."""
     file_info = get_current_file_info()
@@ -106,6 +116,7 @@ def resection():
 
 
 @main_bp.route('/area')
+@login_required
 def area():
     """Area calculation page (Surveyor's formula)."""
     file_info = get_current_file_info()
@@ -114,6 +125,7 @@ def area():
 
 
 @main_bp.route('/traverse')
+@login_required
 def traverse():
     """Traverse adjustment page (Bowditch method)."""
     file_info = get_current_file_info()
@@ -122,6 +134,7 @@ def traverse():
 
 
 @main_bp.route('/plotting')
+@login_required
 def plotting():
     """Plotting page (Grid limits, Interpolation, Draw)."""
     file_info = get_current_file_info()
@@ -129,6 +142,7 @@ def plotting():
 
 
 @main_bp.route('/plan')
+@login_required
 def plan():
     """Plan on screen page."""
     file_info = get_current_file_info()
@@ -137,6 +151,7 @@ def plan():
 
 
 @main_bp.route('/print-preview')
+@login_required
 def print_preview():
     """Print preview page."""
     file_info = get_current_file_info()

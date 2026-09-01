@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - Super Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        [ S U P E R &nbsp; A D M I N &nbsp; D A S H B O A R D ]
+    </div>
+    
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            <div class="stat-card" style="background: #001a00; border: 1px solid #00ff41; padding: 15px; border-radius: 5px; text-align: center;">
+                <div style="font-size: 24px; color: #00ff41; font-weight: bold;">{{ stats.total_users }}</div>
+                <div style="font-size: 12px; color: #ccc;">إجمالي المستخدمين</div>
+            </div>
+            <div class="stat-card" style="background: #1a0000; border: 1px solid #ff4444; padding: 15px; border-radius: 5px; text-align: center;">
+                <div style="font-size: 24px; color: #ff4444; font-weight: bold;">{{ stats.super_admins }}</div>
+                <div style="font-size: 12px; color: #ccc;">Super Admins</div>
+            </div>
+            <div class="stat-card" style="background: #001a1a; border: 1px solid #00ffff; padding: 15px; border-radius: 5px; text-align: center;">
+                <div style="font-size: 24px; color: #00ffff; font-weight: bold;">{{ stats.registered_users }}</div>
+                <div style="font-size: 12px; color: #ccc;">Registered Users</div>
+            </div>
+            <div class="stat-card" style="background: #1a1a00; border: 1px solid #ffff00; padding: 15px; border-radius: 5px; text-align: center;">
+                <div style="font-size: 24px; color: #ffff00; font-weight: bold;">{{ stats.guests }}</div>
+                <div style="font-size: 12px; color: #ccc;">Guests</div>
+            </div>
+            <div class="stat-card" style="background: #1a001a; border: 1px solid #ff00ff; padding: 15px; border-radius: 5px; text-align: center;">
+                <div style="font-size: 24px; color: #ff00ff; font-weight: bold;">{{ stats.active_users }}</div>
+                <div style="font-size: 12px; color: #ccc;">نشط</div>
+            </div>
+            <div class="stat-card" style="background: #00001a; border: 1px solid #4444ff; padding: 15px; border-radius: 5px; text-align: center;">
+                <div style="font-size: 24px; color: #4444ff; font-weight: bold;">{{ stats.total_files }}</div>
+                <div style="font-size: 12px; color: #ccc;">ملفات المساحة</div>
+            </div>
+            <div class="stat-card" style="background: #1a1a1a; border: 1px solid #888888; padding: 15px; border-radius: 5px; text-align: center;">
+                <div style="font-size: 24px; color: #888888; font-weight: bold;">{{ stats.total_points }}</div>
+                <div style="font-size: 12px; color: #ccc;">إجمالي النقاط</div>
+            </div>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+            <h3 style="color: #00ff41;">إدارة المستخدمين</h3>
+            <button onclick="showCreateUserModal()" class="btn btn-primary">+ مستخدم جديد</button>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Full Name</th>
+                        <th>Role</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Last Login</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td><strong>{{ user.username }}</strong></td>
+                        <td>{{ user.full_name or '---' }}</td>
+                        <td>
+                            <span class="role-badge" style="
+                                {% if user.role == 'super_admin' %}background:#1a0000;color:#ff4444;
+                                {% elif user.role == 'registered' %}background:#001a1a;color:#00ffff;
+                                {% else %}background:#1a1a00;color:#ffff00;{% endif %}
+                                padding:2px 8px;border-radius:3px;font-size:11px;">
+                                {{ user.role }}
+                            </span>
+                        </td>
+                        <td>{{ user.email or '---' }}</td>
+                        <td>{{ user.phone or '---' }}</td>
+                        <td>
+                            <span class="status-badge" style="
+                                {% if user.is_active %}background:#001a00;color:#00ff41;
+                                {% else %}background:#1a0000;color:#ff4444;{% endif %}
+                                padding:2px 8px;border-radius:3px;font-size:11px;">
+                                {% if user.is_active %}نشط{% else %}معطل{% endif %}
+                            </span>
+                        </td>
+                        <td>{{ user.created_at or '---' }}</td>
+                        <td>{{ user.last_login or 'أبداً' }}</td>
+                        <td>
+                            <div style="display: flex; gap: 5px;">
+                                {% if user.id != session.user_id %}
+                                <button onclick="editUser({{ user.id }})" class="btn" style="padding: 4px 8px; font-size: 11px;">Edit</button>
+                                <button onclick="resetPassword({{ user.id }})" class="btn" style="padding: 4px 8px; font-size: 11px; background: #ffaa00;">Reset Pwd</button>
+                                {% if user.is_active %}
+                                <button onclick="toggleUser({{ user.id }}, false)" class="btn" style="padding: 4px 8px; font-size: 11px; background: #ff4444;">Disable</button>
+                                {% else %}
+                                <button onclick="toggleUser({{ user.id }}, true)" class="btn" style="padding: 4px 8px; font-size: 11px; background: #00ff44;">Enable</button>
+                                {% endif %}
+                                {% else %}
+                                <span style="color: #888; font-size: 11px;">(You)</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit User Modal -->
+<div id="user-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+    <div class="card" style="width: 100%; max-width: 500px; margin: 20px;">
+        <div class="card-header">
+            <span id="modal-title">[ CREATE USER ]</span>
+            <button onclick="closeUserModal()" style="float: right; background: none; border: none; color: #fff; font-size: 18px; cursor: pointer;">&times;</button>
+        </div>
+        <div class="card-body">
+            <form id="user-form">
+                <input type="hidden" id="user-id" name="id">
+                
+                <div class="form-group">
+                    <label>Username *</label>
+                    <input type="text" id="modal-username" name="username" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Password *</label>
+                    <input type="password" id="modal-password" name="password" class="form-control" minlength="6">
+                    <small style="color: #888;">اترك فارغاً عند التعديل للحفاظ على الحالي</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="modal-fullname" name="full_name" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="modal-email" name="email" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" id="modal-phone" name="phone" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="modal-role" name="role" class="form-control">
+                        <option value="guest">Guest (Read Only)</option>
+                        <option value="registered">Registered User (Full Access)</option>
+                        <option value="super_admin">Super Admin (Full Access)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="modal-active" name="is_active" checked> Active
+                    </label>
+                </div>
+                
+                <div id="modal-error" style="color: #ff4444; margin-bottom: 10px; display: none;"></div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">[ SAVE ]</button>
+                    <button type="button" onclick="closeUserModal()" class="btn" style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="reset-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+    <div class="card" style="width: 100%; max-width: 400px; margin: 20px;">
+        <div class="card-header">
+            [ RESET PASSWORD ]
+        </div>
+        <div class="card-body">
+            <form id="reset-form">
+                <input type="hidden" id="reset-user-id">
+                
+                <div class="form-group">
+                    <label>New Password *</label>
+                    <input type="password" id="reset-new-password" name="new_password" class="form-control" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label>Confirm Password *</label>
+                    <input type="password" id="reset-confirm-password" name="confirm_password" class="form-control" required minlength="6">
+                </div>
+                
+                <div id="reset-error" style="color: #ff4444; margin-bottom: 10px; display: none;"></div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">[ RESET ]</button>
+                    <button type="button" onclick="closeResetModal()" class="btn" style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal { display: none; }
+.modal.show { display: flex; }
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentEditUserId = null;
+
+function showCreateUserModal() {
+    currentEditUserId = null;
+    document.getElementById('modal-title').textContent = '[ CREATE USER ]';
+    document.getElementById('user-form').reset();
+    document.getElementById('user-id').value = '';
+    document.getElementById('modal-password').required = true;
+    document.getElementById('user-modal').classList.add('show');
+}
+
+function editUser(userId) {
+    currentEditUserId = userId;
+    document.getElementById('modal-title').textContent = '[ EDIT USER ]';
+    document.getElementById('modal-password').required = false;
+    document.getElementById('user-modal').classList.add('show');
+    
+    fetch('/admin/api/users/' + userId)
+        .then(r => r.json())
+        .then(user => {
+            document.getElementById('user-id').value = user.id;
+            document.getElementById('modal-username').value = user.username;
+            document.getElementById('modal-fullname').value = user.full_name || '';
+            document.getElementById('modal-email').value = user.email || '';
+            document.getElementById('modal-phone').value = user.phone || '';
+            document.getElementById('modal-role').value = user.role;
+            document.getElementById('modal-active').checked = user.is_active;
+        });
+}
+
+function resetPassword(userId) {
+    document.getElementById('reset-user-id').value = userId;
+    document.getElementById('reset-form').reset();
+    document.getElementById('reset-modal').classList.add('show');
+}
+
+function closeUserModal() {
+    document.getElementById('user-modal').classList.remove('show');
+    currentEditUserId = null;
+}
+
+function closeResetModal() {
+    document.getElementById('reset-modal').classList.remove('show');
+}
+
+function toggleUser(userId, activate) {
+    if (!confirm(activate ? 'Enable this user?' : 'Disable this user?')) return;
+    
+    fetch('/admin/api/users/' + userId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: activate })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            location.reload();
+        }
+    });
+}
+
+document.getElementById('user-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const errorDiv = document.getElementById('modal-error');
+    errorDiv.style.display = 'none';
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    data.is_active = document.getElementById('modal-active').checked;
+    
+    const userId = document.getElementById('user-id').value;
+    const url = userId ? '/admin/api/users/' + userId : '/admin/api/users';
+    const method = userId ? 'PUT' : 'POST';
+    
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.error) {
+            errorDiv.textContent = result.error;
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        closeUserModal();
+        location.reload();
+        
+    } catch (error) {
+        errorDiv.textContent = 'Error: ' + error.message;
+        errorDiv.style.display = 'block';
+    }
+});
+
+document.getElementById('reset-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const errorDiv = document.getElementById('reset-error');
+    errorDiv.style.display = 'none';
+    
+    const newPass = document.getElementById('reset-new-password').value;
+    const confirmPass = document.getElementById('reset-confirm-password').value;
+    
+    if (newPass !== confirmPass) {
+        errorDiv.textContent = 'Passwords do not match';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    const userId = document.getElementById('reset-user-id').value;
+    
+    try {
+        const response = await fetch('/admin/api/users/' + userId + '/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ new_password: newPass })
+        });
+        
+        const result = await response.json();
+        
+        if (result.error) {
+            errorDiv.textContent = result.error;
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        closeResetModal();
+        alert('Password reset successfully');
+        
+    } catch (error) {
+        errorDiv.textContent = 'Error: ' + error.message;
+        errorDiv.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}
