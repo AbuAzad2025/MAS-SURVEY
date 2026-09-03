@@ -264,7 +264,8 @@ jobs:
         run: |
           mkdir -p artifacts
           pytest tests/ --tb=short -p no:cacheprovider --ignore=tests/e2e \
-                 --cov=app --cov-report=xml:artifacts/coverage.xml \
+                 --cov=app --cov-report=term-missing \
+                 --cov-report=xml:artifacts/coverage.xml \
                  --cov-report=html:artifacts/coverage-html \
                  --cov-report=json:artifacts/coverage.json
       - name: Coverage summary
