@@ -46,10 +46,8 @@ jobs:
         run: |
           python -m compileall -q app/ tests/ config.py run.py
       - name: Import sanity
-        env:
-          SQLALCHEMY_DATABASE_URI: 'postgresql+psycopg2://postgres:123@127.0.0.1:5432/postgres'
         run: |
-          python -c "from app import create_app; a = create_app('testing'); print('factory ok')"
+          python scripts/import_check.py
       - name: Report
         if: always()
         run: |
