@@ -121,12 +121,13 @@ class TestWaitingRoom:
         assert r.status_code == 200
         assert "بانتظار".encode() in r.data or b"pending" in r.data.lower()
 
-    def test_admin_waiting_redirects_to_mas(self, client, super_admin_user):
+    def test_admin_waiting_redirects_to_platform(self, client, super_admin_user):
+        # Platform entry is the landing (program list), never inside one program.
         client.post("/auth/login", json={"username": super_admin_user["username"],
                                          "password": "admin123"})
         r = client.get("/waiting")
         assert r.status_code == 302
-        assert r.headers["Location"].endswith("/mas")
+        assert r.headers["Location"] == "/", r.headers["Location"]
 
     def test_owner_queue_shows_contact(self, client, app, super_admin_user):
         uname = self._signup_blocked_user(client, app, super_admin_user, "regcontact")
@@ -140,7 +141,7 @@ class TestWaitingRoom:
         assert contact.get("whatsapp"), f"contact missing whatsapp: {mine[0]}"
         assert contact.get("email") == f"{uname}@test.com"
 
-    def test_approve_unblocks_login_to_mas(self, client, app, super_admin_user):
+    def test_approve_unblocks_login_to_platform(self, client, app, super_admin_user):
         uname = self._signup_blocked_user(client, app, super_admin_user, "regappr")
         client.post("/auth/login", json={"username": super_admin_user["username"],
                                          "password": "admin123"})
@@ -151,4 +152,5 @@ class TestWaitingRoom:
         _logout(client)
         r = client.post("/auth/login", json={"username": uname, "password": "password123"})
         assert r.status_code == 200
-        assert r.get_json()["redirect"].endswith("/mas"), r.get_json()
+        # Approved users land on the platform (program list), not inside MAS.
+        assert r.get_json()["redirect"] == "/", r.get_json()

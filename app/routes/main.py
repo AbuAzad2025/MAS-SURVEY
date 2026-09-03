@@ -35,7 +35,7 @@ def waiting():
 
     tenant = get_current_tenant()
     if tenant_block_reason(tenant) is None:
-        return redirect(url_for('main.mas_menu'))
+        return redirect(url_for('landing.index'))
 
     reason = tenant_block_reason(tenant)
     requests = []

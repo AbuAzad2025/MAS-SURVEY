@@ -25,7 +25,7 @@ def login():
     """Login page and handler."""
     if request.method == 'GET':
         if 'user_id' in session:
-            return redirect(url_for('main.mas_menu'))
+            return redirect(url_for('landing.index'))
         return render_template('login.html')
 
     data = request.json if request.is_json else request.form
@@ -49,10 +49,11 @@ def login():
     user.last_login = datetime.utcnow()
     db.session.commit()
 
-    # Blocked tenants (no/expired subscription, suspended) land in waiting room.
+    # Platform entry: blocked tenants land in waiting room, everyone else
+    # lands on the platform landing (program list), never inside one program.
     from app.shared.middleware import tenant_block_reason
     target = ('landing.waiting' if tenant_block_reason(user.owned_tenant)
-              else 'main.mas_menu')
+              else 'landing.index')
 
     return jsonify({
         'status': 'ok',
@@ -126,7 +127,7 @@ def register():
 
     if request.method == 'GET':
         if 'user_id' in session:
-            return redirect(url_for('main.mas_menu'))
+            return redirect(url_for('landing.index'))
         plans = Plan.query.filter_by(is_active=True).all()
         return render_template(
             'register.html',

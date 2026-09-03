@@ -40,13 +40,22 @@
             <span class="card-number">01</span>
         </a>
         
+        <!-- INHERITANCE Program - Coming Soon -->
+        <div class="program-card coming-soon">
+            <span class="card-status coming-soon">COMING SOON</span>
+            <span class="card-icon">⚖️</span>
+            <span class="card-name">INHERITANCE</span>
+            <span class="card-desc">Estate & Inheritance Distribution</span>
+            <span class="card-number">02</span>
+        </div>
+
         <!-- Coming Soon Programs -->
         <div class="program-card coming-soon">
             <span class="card-status coming-soon">COMING SOON</span>
             <span class="card-icon">📊</span>
             <span class="card-name">STATS</span>
             <span class="card-desc">Statistical Analysis Module</span>
-            <span class="card-number">02</span>
+            <span class="card-number">03</span>
         </div>
         
         <div class="program-card coming-soon">
@@ -54,7 +63,7 @@
             <span class="card-icon">🗺️</span>
             <span class="card-name">TOPO</span>
             <span class="card-desc">Topography & Contour Mapping</span>
-            <span class="card-number">03</span>
+            <span class="card-number">04</span>
         </div>
         
         <div class="program-card coming-soon">
@@ -62,7 +71,7 @@
             <span class="card-icon">🛣️</span>
             <span class="card-name">ROADS</span>
             <span class="card-desc">Road Design & Alignment</span>
-            <span class="card-number">04</span>
+            <span class="card-number">05</span>
         </div>
         
         <div class="program-card coming-soon">
@@ -70,7 +79,7 @@
             <span class="card-icon">🏗️</span>
             <span class="card-name">STRUCT</span>
             <span class="card-desc">Structural Calculations</span>
-            <span class="card-number">05</span>
+            <span class="card-number">06</span>
         </div>
         
         <div class="program-card coming-soon">
@@ -78,7 +87,7 @@
             <span class="card-icon">🌐</span>
             <span class="card-name">GIS</span>
             <span class="card-desc">GIS Integration & Mapping</span>
-            <span class="card-number">06</span>
+            <span class="card-number">07</span>
         </div>
         
     </div>
@@ -115,12 +124,13 @@
                     {% if session.user_role != 'super_admin' %}display: none;{% endif %}">[ ADMIN PANEL ]</a>
             {% else %}
                 <div style="color: #ccc; margin-bottom: 10px;">
-                    ليس لديك حساب؟ إنشاء الحسابات يتم فقط عبر السوبر أدمن.
+                    ليس لديك حساب؟ سجّل واختر حزمتك وسيتواصل معك مالك المنصة للموافقة.
                 </div>
                 <div style="color: #888; font-size: 12px; margin-bottom: 10px;">
                     تواصل مع: <strong style="color: #00ff41;">أبو أزاد</strong> | واتساب: <a href="https://wa.me/972562150193" target="_blank" style="color: #00ff41;">+972 56 215 0193</a>
                 </div>
                 <a href="{{ url_for('auth.login') }}" class="btn btn-primary">[ LOGIN ]</a>
+                <a href="{{ url_for('auth.register') }}" class="btn" style="margin-left: 10px;">[ REGISTER ]</a>
             {% endif %}
         </div>
     </div>
