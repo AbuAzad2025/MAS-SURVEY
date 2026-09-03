@@ -8,11 +8,22 @@ jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
-    
-    defaults:
-      run:
-        working-directory: WEB_VERSION
-    
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 123
+          POSTGRES_DB: mas_survey_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,7 +31,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.14'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
@@ -28,5 +40,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run pytest
+        env:
+          DB_PASSWORD: 123
         run: |
-          pytest tests/ -v --tb=short
+          pytest tests/ -q -p no:cacheprovider --no-cov --ignore=tests/e2e --tb=short

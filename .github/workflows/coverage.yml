@@ -78,21 +78,21 @@ jobs:
 
       - name: Analyze CSS files
         run: |
-          CSS_COUNT=$(find static/css -name "*.css" 2>/dev/null | wc -l)
+          CSS_COUNT=$(find app/static/css -name "*.css" 2>/dev/null | wc -l)
           echo "- Total CSS files: $CSS_COUNT" >> frontend_report/coverage.md
           
           echo "| File | Lines |" >> frontend_report/coverage.md
           echo "|------|-------|" >> frontend_report/coverage.md
-          find static/css -name "*.css" -exec sh -c 'echo "| {} | $(wc -l < "{}") |" >> frontend_report/coverage.md' \; 2>/dev/null || true
+          find app/static/css -name "*.css" -exec sh -c 'echo "| {} | $(wc -l < "{}") |" >> frontend_report/coverage.md' \; 2>/dev/null || true
 
       - name: Analyze JavaScript files
         run: |
-          JS_COUNT=$(find static/js -name "*.js" 2>/dev/null | wc -l)
+          JS_COUNT=$(find app/static/js -name "*.js" 2>/dev/null | wc -l)
           echo "- Total JavaScript files: $JS_COUNT" >> frontend_report/coverage.md
           
           echo "| File | Lines |" >> frontend_report/coverage.md
           echo "|------|-------|" >> frontend_report/coverage.md
-          for js_file in static/js/*.js; do
+          for js_file in app/static/js/*.js; do
             if [ -f "$js_file" ]; then
               FILENAME=$(basename "$js_file")
               LINES=$(wc -l < "$js_file")
@@ -103,16 +103,16 @@ jobs:
       - name: Calculate actual code coverage metrics
         run: |
           HTML_LINES=$(find app/templates -name "*.html" -exec cat {} \; 2>/dev/null | wc -l)
-          CSS_LINES=$(find static/css -name "*.css" -exec cat {} \; 2>/dev/null | wc -l)
-          JS_LINES=$(find static/js -name "*.js" -exec cat {} \; 2>/dev/null | wc -l)
+          CSS_LINES=$(find app/static/css -name "*.css" -exec cat {} \; 2>/dev/null | wc -l)
+          JS_LINES=$(find app/static/js -name "*.js" -exec cat {} \; 2>/dev/null | wc -l)
           
           echo "" >> frontend_report/coverage.md
           echo "## Code Statistics" >> frontend_report/coverage.md
           echo "| Language | Files | Total Lines |" >> frontend_report/coverage.md
           echo "|----------|-------|-------------|" >> frontend_report/coverage.md
           echo "| HTML | $(find app/templates -name "*.html" 2>/dev/null | wc -l) | $HTML_LINES |" >> frontend_report/coverage.md
-          echo "| CSS | $(find static/css -name "*.css" 2>/dev/null | wc -l) | $CSS_LINES |" >> frontend_report/coverage.md
-          echo "| JavaScript | $(find static/js -name "*.js" 2>/dev/null | wc -l) | $JS_LINES |" >> frontend_report/coverage.md
+          echo "| CSS | $(find app/static/css -name "*.css" 2>/dev/null | wc -l) | $CSS_LINES |" >> frontend_report/coverage.md
+          echo "| JavaScript | $(find app/static/js -name "*.js" 2>/dev/null | wc -l) | $JS_LINES |" >> frontend_report/coverage.md
           
           cat frontend_report/coverage.md
 
@@ -140,7 +140,7 @@ jobs:
           echo "## Directory Structure" >> static_report/analysis.md
           
           echo "### CSS Files:" >> static_report/analysis.md
-          for f in static/css/*.css; do
+          for f in app/static/css/*.css; do
             if [ -f "$f" ]; then
               echo "- $(basename $f) ($(wc -l < "$f") lines)" >> static_report/analysis.md
             fi
@@ -148,7 +148,7 @@ jobs:
           
           echo "" >> static_report/analysis.md
           echo "### JavaScript Files:" >> static_report/analysis.md
-          for f in static/js/*.js; do
+          for f in app/static/js/*.js; do
             if [ -f "$f" ]; then
               echo "- $(basename $f) ($(wc -l < "$f") lines)" >> static_report/analysis.md
             fi
@@ -157,7 +157,7 @@ jobs:
           echo "" >> static_report/analysis.md
           echo "### Assets:" >> static_report/analysis.md
           for ext in png jpg jpeg svg ico; do
-            count=$(find static -name "*.$ext" 2>/dev/null | wc -l)
+            count=$(find app/static -name "*.$ext" 2>/dev/null | wc -l)
             if [ $count -gt 0 ]; then
               echo "- .$ext: $count files" >> static_report/analysis.md
             fi
