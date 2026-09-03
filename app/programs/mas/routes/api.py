@@ -29,25 +29,56 @@ def _ok(**kwargs):
     return jsonify({'status': 'ok', **kwargs})
 
 
+def _tenant():
+    t = get_current_tenant()
+    if t is None:
+        raise PermissionError("no tenant")
+    return t
+
+
 def _current_file_id():
     """Return the SurveyFile id of the current working file (tenant-scoped)."""
     name = session.get('current_file')
     if not name:
         return None
+    tenant = get_current_tenant()
+    if tenant is None:
+        return None
     f = SurveyFile.query.filter_by(
-        tenant_id=get_current_tenant().id, name=name
+        tenant_id=tenant.id, name=name
     ).first()
     return f.id if f else None
 
 
 def _points_dict_for_file(file_id: int) -> dict:
-    rows = SurveyPoint.query.filter_by(file_id=file_id).order_by(SurveyPoint.point_no).all()
+    rows = SurveyPoint.query.filter_by(
+        tenant_id=get_current_tenant().id, file_id=file_id
+    ).order_by(SurveyPoint.point_no).all()
     return {p.point_no: {'y': p.y or 0, 'x': p.x or 0, 'h': p.h or 0} for p in rows}
 
 
 def _points_list_for_file(file_id: int) -> list:
-    rows = SurveyPoint.query.filter_by(file_id=file_id).order_by(SurveyPoint.point_no).all()
+    rows = SurveyPoint.query.filter_by(
+        tenant_id=get_current_tenant().id, file_id=file_id
+    ).order_by(SurveyPoint.point_no).all()
     return [p.to_dict() for p in rows]
+
+
+def _json_body():
+    """Safe JSON parser that tolerates form posts."""
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
+
+
+def _is_blocked_403(tenant):
+    """Return 403 JSON if the tenant cannot write; otherwise None."""
+    reason = tenant_block_reason(tenant)
+    if reason is None:
+        return None
+    msg = ('Account suspended, contact platform owner'
+           if reason == 'suspended'
+           else 'Subscription expired, please renew')
+    return jsonify({'error': msg}), 403
 
 
 # --- current file ------------------------------------------------------
@@ -55,11 +86,14 @@ def _points_list_for_file(file_id: int) -> list:
 @api_bp.route('/set-file', methods=['POST'])
 @login_required
 def set_current_file():
-    data = request.json or {}
-    name = (data.get('filename') or '').strip()
+    data = _json_body()
+    name = str(data.get('filename') or '').strip()
     if not name:
         return _error('Filename required')
-    f = SurveyFile.query.filter_by(tenant_id=get_current_tenant().id, name=name).first()
+    tenant = get_current_tenant()
+    if tenant is None:
+        return _error('No tenant', 403)
+    f = SurveyFile.query.filter_by(tenant_id=tenant.id, name=name).first()
     if not f:
         return _error('File not found', 404)
     session['current_file'] = name
@@ -70,9 +104,10 @@ def set_current_file():
 @login_required
 def get_current_file():
     name = session.get('current_file')
-    if not name:
+    tenant = get_current_tenant()
+    if not name or tenant is None:
         return jsonify({'file': None})
-    f = SurveyFile.query.filter_by(tenant_id=get_current_tenant().id, name=name).first()
+    f = SurveyFile.query.filter_by(tenant_id=tenant.id, name=name).first()
     return jsonify({'file': f.to_dict() if f else None})
 
 
@@ -81,9 +116,12 @@ def get_current_file():
 @api_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings_endpoint():
-    tenant_id = get_current_tenant().id
+    tenant = get_current_tenant()
+    if tenant is None:
+        return _error('No tenant found', 403)
+    tenant_id = tenant.id
     if request.method == 'POST':
-        data = request.json or {}
+        data = _json_body()
         for key, value in data.items():
             Settings.set(tenant_id, key, value)
         session.pop('settings', None)
@@ -101,13 +139,9 @@ def files_list():
         return _error('No tenant found', 403)
     tenant_id = tenant.id
     if request.method == 'POST':
-        reason = tenant_block_reason(tenant)
-        if reason == 'suspended':
-            return _error('Account suspended, contact platform owner', 403)
-        if reason == 'expired':
-            return _error('Subscription expired, please renew', 400)
-        if reason == 'no_tenant':
-            return _error('No tenant found', 403)
+        blocked = _is_blocked_403(tenant)
+        if blocked:
+            return blocked
         try:
             limits = get_plan_limits(getattr(tenant, 'plan', 'none'))
             max_files = limits.get('max_files', 5)
@@ -116,21 +150,27 @@ def files_list():
         if max_files is not None and max_files >= 0:
             try:
                 files_count = SurveyFile.query.filter_by(
-                    tenant_id=tenant.id).count()
+                    tenant_id=tenant_id).count()
             except Exception:
                 files_count = 0
             if files_count >= max_files:
-                return _error('Plan file limit reached', 400)
-        data = request.json or {}
-        name = (data.get('name') or '').strip()
+                return _error('Plan file limit reached', 403)
+        data = _json_body()
+        name = str(data.get('name') or '').strip()
         if not name:
             return _error('Name required')
-        if SurveyFile.query.filter_by(tenant_id=tenant_id, name=name).first():
+        if len(name) > 200:
+            return _error('Name too long (max 200)', 400)
+        from sqlalchemy.exc import IntegrityError
+        try:
+            f = SurveyFile(tenant_id=tenant_id, name=name,
+                           date=str(data.get('date') or '')[:20] or None,
+                           place=str(data.get('place') or '')[:200] or None)
+            db.session.add(f)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
             return _error('File exists', 400)
-        f = SurveyFile(tenant_id=tenant_id, name=name,
-                       date=data.get('date'), place=data.get('place'))
-        db.session.add(f)
-        db.session.commit()
         session['current_file'] = name
         return _ok(file=f.to_dict())
 
@@ -143,7 +183,13 @@ def files_list():
 @api_bp.route('/files/upload', methods=['POST'])
 @login_required
 def upload_file():
-    tenant_id = get_current_tenant().id
+    tenant = get_current_tenant()
+    if tenant is None:
+        return _error('No tenant found', 403)
+    blocked = _is_blocked_403(tenant)
+    if blocked:
+        return blocked
+    tenant_id = tenant.id
     MAX_FILE_SIZE = 10 * 1024 * 1024
 
     if 'file' not in request.files:
@@ -162,6 +208,21 @@ def upload_file():
     if size < 50:
         return _error('File is too small or corrupted')
 
+    # Plan limits before parsing to avoid wasted work.
+    try:
+        limits = get_plan_limits(getattr(tenant, 'plan', 'none'))
+        max_files = limits.get('max_files', 5)
+        max_points = limits.get('max_points', 500)
+    except Exception:
+        max_files = max_points = -1
+    if max_files is not None and max_files >= 0:
+        try:
+            files_count = SurveyFile.query.filter_by(tenant_id=tenant_id).count()
+        except Exception:
+            files_count = 0
+        if files_count >= max_files:
+            return _error('Plan file limit reached', 403)
+
     try:
         content = file.read()
         header_check = content[:15]
@@ -171,6 +232,9 @@ def upload_file():
         if not points:
             return _error('No valid points found in file')
 
+        if max_points is not None and max_points >= 0 and len(points) > max_points:
+            return _error(f'Plan points limit ({max_points}) exceeded', 403)
+
         base_name = os.path.splitext(filename)[0]
         safe_name = re.sub(r'[^\w\s\-]', '', base_name)[:50] or 'uploaded_file'
         original_name = safe_name
@@ -178,23 +242,28 @@ def upload_file():
         while SurveyFile.query.filter_by(tenant_id=tenant_id, name=safe_name).first():
             safe_name = f"{original_name}_{counter}"; counter += 1
 
-        f = SurveyFile(tenant_id=tenant_id, name=safe_name,
-                       date=datetime.now().strftime('%Y-%m-%d'),
-                       place='Uploaded')
-        db.session.add(f); db.session.flush()
+        from sqlalchemy.exc import IntegrityError
+        try:
+            f = SurveyFile(tenant_id=tenant_id, name=safe_name,
+                           date=datetime.now().strftime('%Y-%m-%d'),
+                           place='Uploaded')
+            db.session.add(f); db.session.flush()
 
-        for p in points:
-            db.session.add(SurveyPoint(
-                tenant_id=tenant_id, file_id=f.id,
-                point_no=p['no'], y=p['y'], x=p['x'], h=p['h']
-            ))
-        f.no_of_points = len(points)
-        db.session.commit()
+            for p in points:
+                db.session.add(SurveyPoint(
+                    tenant_id=tenant_id, file_id=f.id,
+                    point_no=p['no'], y=p['y'], x=p['x'], h=p['h']
+                ))
+            f.no_of_points = len(points)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            return _error('Failed to create file', 500)
         session['current_file'] = safe_name
         return _ok(file=f.to_dict(), points_count=len(points), filename=safe_name)
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        return _error('Failed to parse file: ' + str(e), 500)
+        return _error('Failed to parse file: DTF invalid or corrupted', 400)
 
 
 def parse_dtf_file(content):
@@ -241,22 +310,27 @@ def parse_dtf_file(content):
 @api_bp.route('/guide')
 def get_guide():
     import os, re
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    # __file__ = app/programs/mas/routes/api.py -> go up 4 levels to repo root.
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     guide_path = os.path.join(base_dir, 'USER_GUIDE.md')
     try:
         with open(guide_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        html = content
-        html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
-        html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
-        html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
-        html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
-        html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
-        html = re.sub(r'\n\n+', r'<br><br>', html)
-        html = re.sub(r'---', '<hr style="border:0;border-top:1px solid #004400;margin:15px 0;">', html)
-        return html
-    except Exception as e:
-        return f'<p style="color:red;">Error loading guide: {str(e)}</p>'
+        # Escape angle brackets BEFORE adding our own HTML tags so the
+        # guide's own "<script>" / "<img>" cannot execute.
+        import html
+        content = html.escape(content)
+        html_out = content
+        html_out = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html_out, flags=re.MULTILINE)
+        html_out = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html_out, flags=re.MULTILINE)
+        html_out = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html_out, flags=re.MULTILINE)
+        html_out = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_out)
+        html_out = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html_out)
+        html_out = re.sub(r'\n\n+', r'<br><br>', html_out)
+        html_out = re.sub(r'---', '<hr style="border:0;border-top:1px solid #004400;margin:15px 0;">', html_out)
+        return html_out
+    except Exception:
+        return '<p style="color:red;">Error loading guide</p>'
 
 
 # --- file detail -------------------------------------------------------
@@ -264,11 +338,15 @@ def get_guide():
 @api_bp.route('/files/<name>', methods=['GET', 'DELETE'])
 @login_required
 def file_detail(name):
-    tenant_id = get_current_tenant().id
-    f = SurveyFile.query.filter_by(tenant_id=tenant_id, name=name).first()
+    tenant = get_current_tenant()
+    if tenant is None:
+        return _error('No tenant found', 403)
+    f = SurveyFile.query.filter_by(tenant_id=tenant.id, name=name).first()
     if not f:
         return _error('File not found', 404)
     if request.method == 'DELETE':
+        if tenant_block_reason(tenant) == 'suspended':
+            return _error('Account suspended', 403)
         db.session.delete(f); db.session.commit()
         if session.get('current_file') == name:
             session.pop('current_file', None)
@@ -283,7 +361,7 @@ def file_detail(name):
 def get_points():
     fid = _current_file_id()
     if not fid:
-        return jsonify([])
+        return _error('No file selected', 400)
     return jsonify(_points_list_for_file(fid))
 
 
@@ -293,21 +371,34 @@ def save_points():
     tenant = get_current_tenant()
     if tenant is None:
         return _error('No tenant found', 403)
-    tenant_id = tenant.id
-    reason = tenant_block_reason(tenant)
-    if reason == 'suspended':
-        return _error('Account suspended, contact platform owner', 403)
-    if reason == 'no_tenant':
-        return _error('No tenant found', 403)
+    blocked = _is_blocked_403(tenant)
+    if blocked:
+        return blocked
     fid = _current_file_id()
     if not fid:
-        return _error('No file selected')
-    data = request.json or {}
-    new_points = data.get('points', [])
-
-    f = db.session.get(SurveyFile, fid)
+        return _error('No file selected', 400)
+    f = SurveyFile.query.filter_by(tenant_id=tenant.id, id=fid).first()
     if not f:
-        return _error('No file selected')
+        return _error('File not found', 404)
+    data = _json_body()
+    new_points = data.get('points', [])
+    if not isinstance(new_points, list):
+        return _error('points must be a list', 400)
+    cleaned = []
+    for p in new_points:
+        if not isinstance(p, dict):
+            continue
+        try:
+            no = int(p.get('no') if p.get('no') is not None else p.get('point_no'))
+            y = float(p.get('y', 0) or 0)
+            x = float(p.get('x', 0) or 0)
+            h = float(p.get('h', 0) or 0)
+        except (TypeError, ValueError):
+            return _error('Each point needs numeric no/y/x/h', 400)
+        cleaned.append({'no': no, 'y': y, 'x': x, 'h': h,
+                       'code': str(p.get('code', ''))[:50]})
+    new_points = cleaned
+    tenant_id = tenant.id
 
     # Plan points cap: total_after = existing count + new unique point_nos
     # not already present. -1 (or negative) means unlimited.
@@ -327,36 +418,24 @@ def save_points():
             existing_nos = {r[0] for r in existing_rows}
         except Exception:
             existing_nos = set()
-        incoming_nos = set()
-        for p in new_points:
-            try:
-                no = p.get('no') if p.get('no') is not None else p.get('point_no')
-            except Exception:
-                continue
-            if no is None:
-                continue
-            incoming_nos.add(no)
+        incoming_nos = {p['no'] for p in new_points}
         new_unique = len(incoming_nos - existing_nos)
         total_after = existing_count + new_unique
         if total_after > max_points:
-            return _error('Plan points limit reached', 400)
+            return _error('Plan points limit reached', 403)
 
     # Append/upsert strategy (back-compat): insert new numbers, update existing.
     for p in new_points:
-        no = p.get('no') if p.get('no') is not None else p.get('point_no')
-        if no is None:
-            continue
-        existing = SurveyPoint.query.filter_by(file_id=fid, point_no=no).first()
+        existing = SurveyPoint.query.filter_by(file_id=fid, point_no=p['no']).first()
         if existing:
-            existing.y = p.get('y', 0)
-            existing.x = p.get('x', 0)
-            existing.h = p.get('h', 0)
-            existing.code = p.get('code', '')
+            existing.y = p['y']
+            existing.x = p['x']
+            existing.h = p['h']
+            existing.code = p['code']
         else:
             db.session.add(SurveyPoint(
-                tenant_id=tenant_id, file_id=fid, point_no=no,
-                y=p.get('y', 0), x=p.get('x', 0), h=p.get('h', 0),
-                code=p.get('code', ''),
+                tenant_id=tenant_id, file_id=fid, point_no=p['no'],
+                y=p['y'], x=p['x'], h=p['h'], code=p['code'],
             ))
     db.session.flush()
     f.no_of_points = SurveyPoint.query.filter_by(file_id=fid).count()
@@ -364,13 +443,28 @@ def save_points():
     return _ok(count=len(new_points))
 
 
+def _safe_num(value, default=0.0):
+    """Coerce to float; return default on bad input (no 500)."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_int(value, default=None):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 # --- calculations ------------------------------------------------------
 
 @api_bp.route('/calculate/area', methods=['POST'])
 def calculate_area():
-    data = request.json or {}
+    data = _json_body()
     points = data.get('points', [])
-    if len(points) < 3:
+    if not isinstance(points, list) or len(points) < 3:
         return _error('Need at least 3 points')
     try:
         area = CalculatorService.calculate_area(points)
@@ -380,33 +474,49 @@ def calculate_area():
                         'formatted': f"{area:.2f} m²"})
     except SurveyingError as e:
         return _error(str(e))
+    except (KeyError, TypeError, ValueError):
+        return _error('Each point needs numeric y/x', 400)
 
 
 @api_bp.route('/calculate/perimeter', methods=['POST'])
 def calculate_perimeter():
-    data = request.json or {}
+    data = _json_body()
     points = data.get('points', [])
+    if not isinstance(points, list) or len(points) < 2:
+        return _error('Need at least 2 points')
     try:
         perimeter = CalculatorService.calculate_perimeter(points)
         return jsonify({'perimeter': round(perimeter, 3),
                         'formatted': f"{perimeter:.2f} m"})
     except SurveyingError as e:
         return _error(str(e))
+    except (KeyError, TypeError, ValueError):
+        return _error('Each point needs numeric y/x', 400)
 
 
 @api_bp.route('/calculate/polar', methods=['POST'])
 def calculate_polar():
-    data = request.json or {}
+    data = _json_body()
     polar_type = data.get('type', 'DISTOMAT')
-    back_azimuth = data.get('back_azimuth', 0)
+    try:
+        back_azimuth = _safe_num(data.get('back_azimuth', 0))
+    except Exception:
+        back_azimuth = 0
     observations = data.get('observations', [])
+    if not isinstance(observations, list):
+        return _error('observations must be a list', 400)
     results = []
     for obs in observations:
-        distance = obs.get('distance', 0)
-        angle = obs.get('angle', 0)
-        h = obs.get('h', 0)
+        if not isinstance(obs, dict):
+            continue
+        distance = _safe_num(obs.get('distance', 0))
+        angle = _safe_num(obs.get('angle', 0))
+        h = _safe_num(obs.get('h', 0))
         bearing = (back_azimuth + angle) % 400
-        delta_y, delta_x = CalculatorService.polar_to_cartesian(distance, bearing)
+        try:
+            delta_y, delta_x = CalculatorService.polar_to_cartesian(distance, bearing)
+        except SurveyingError as e:
+            return _error(str(e))
         results.append({'no': obs.get('no'),
                         'y': round(delta_y, 3), 'x': round(delta_x, 3),
                         'h': h, 'bearing': round(bearing, 4)})
@@ -415,13 +525,17 @@ def calculate_polar():
 
 @api_bp.route('/calculate/offsets', methods=['POST'])
 def calculate_offsets():
-    data = request.json or {}
+    data = _json_body()
     line_start = data.get('line_start', {'y': 0, 'x': 0})
     line_end = data.get('line_end', {'y': 100, 'x': 100})
     points = data.get('points', [])
+    if not isinstance(points, list):
+        return _error('points must be a list', 400)
     results = []
     for p in points:
-        offset_dist = p.get('offset_distance', 0)
+        if not isinstance(p, dict):
+            continue
+        offset_dist = _safe_num(p.get('offset_distance', 0))
         side = p.get('side', 'LEFT')
         try:
             r = CalculatorService.calculate_offset_point(line_start, line_end, offset_dist, side)
@@ -435,26 +549,29 @@ def calculate_offsets():
 
 @api_bp.route('/calculate/intersection', methods=['POST'])
 def calculate_intersection():
-    data = request.json or {}
+    data = _json_body()
     intersection_type = data.get('type', 'TWO_LINES')
     p1 = data.get('p1', {'y': 0, 'x': 0})
     p2 = data.get('p2', {'y': 0, 'x': 0})
     try:
         if intersection_type in ('TWO_LINES', 'BEARING_BEARING'):
-            b1 = data.get('bearing1', 0); b2 = data.get('bearing2', 100)
+            b1 = _safe_num(data.get('bearing1', 0))
+            b2 = _safe_num(data.get('bearing2', 100))
             r = CalculatorService.intersection_two_lines(p1, b1, p2, b2)
             if r is None: return _error('Lines are parallel or nearly parallel')
             return jsonify({'status': 'ok', 'type': intersection_type,
                             'point': {'y': round(r['y'], 3), 'x': round(r['x'], 3)}})
         elif intersection_type == 'TWO_DISTANCES':
-            d1 = data.get('distance1', 100); d2 = data.get('distance2', 100)
+            d1 = _safe_num(data.get('distance1', 100))
+            d2 = _safe_num(data.get('distance2', 100))
             r = CalculatorService.intersection_two_distances(p1, d1, p2, d2)
             if r is None: return _error('Circles do not intersect')
             return jsonify({'status': 'ok', 'type': intersection_type,
                             'point1': {'y': round(r[0]['y'], 3), 'x': round(r[0]['x'], 3)},
                             'point2': {'y': round(r[1]['y'], 3), 'x': round(r[1]['x'], 3)}})
         elif intersection_type == 'LINE_DISTANCE':
-            b1 = data.get('bearing1', 0); d2 = data.get('distance2', 100)
+            b1 = _safe_num(data.get('bearing1', 0))
+            d2 = _safe_num(data.get('distance2', 100))
             r = CalculatorService.intersection_line_distance(p1, b1, p2, d2)
             if r is None: return _error('Line and circle do not intersect')
             return jsonify({'status': 'ok', 'type': intersection_type,
@@ -463,70 +580,101 @@ def calculate_intersection():
         return _error('Unknown intersection type')
     except SurveyingError as e:
         return _error(str(e))
+    except (KeyError, TypeError, ValueError):
+        return _error('Each point needs numeric y/x', 400)
 
 
 @api_bp.route('/calculate/implant', methods=['POST'])
 def calculate_implant():
-    data = request.json or {}
-    base = data.get('base_point', {'y': 0, 'x': 0, 'h': 0})
-    distance = data.get('distance', 0)
-    bearing = data.get('bearing', 0)
-    height = data.get('height', 0)
-    delta_y, delta_x = CalculatorService.polar_to_cartesian(distance, bearing)
-    implant_point = {'y': round(base['y'] + delta_y, 3),
-                     'x': round(base['x'] + delta_x, 3),
-                     'h': height if height else base.get('h', 0)}
+    data = _json_body()
+    base = data.get('base_point', {}) or {}
+    try:
+        base_y = _safe_num(base.get('y', 0))
+        base_x = _safe_num(base.get('x', 0))
+        base_h = _safe_num(base.get('h', 0))
+        distance = _safe_num(data.get('distance', 0))
+        bearing = _safe_num(data.get('bearing', 0))
+        height = _safe_num(data.get('height', 0))
+    except Exception:
+        return _error('Invalid numbers in implant payload', 400)
+    try:
+        delta_y, delta_x = CalculatorService.polar_to_cartesian(distance, bearing)
+    except SurveyingError as e:
+        return _error(str(e))
+    implant_point = {'y': round(base_y + delta_y, 3),
+                     'x': round(base_x + delta_x, 3),
+                     'h': height if height else base_h}
     return jsonify({'status': 'ok', 'base': base, 'implant': implant_point,
                     'distance': distance, 'bearing': bearing})
 
 
 @api_bp.route('/calculate/circle', methods=['POST'])
 def calculate_circle():
-    data = request.json or {}
+    data = _json_body()
     calc_type = data.get('type', 'AREA')
-    v1 = data.get('value1', 0); v2 = data.get('value2', 0)
-    result = 0; result_unit = ''
+    try:
+        v1 = _safe_num(data.get('value1', 0))
+        v2 = _safe_num(data.get('value2', 0))
+    except Exception:
+        return _error('value1/value2 must be numbers', 400)
+    result = 0
+    result_unit = ''
     if calc_type == 'ARC':
-        result = (v1 / 200) * math.pi * v2; result_unit = 'm'
+        result = (v1 / 200) * math.pi * v2
+        result_unit = 'm'
     elif calc_type == 'CIRCUMFERENCE':
-        result = 2 * math.pi * v1; result_unit = 'm'
+        result = 2 * math.pi * v1
+        result_unit = 'm'
     elif calc_type == 'AREA':
-        result = math.pi * v1 * v1; result_unit = 'm²'
+        result = math.pi * v1 * v1
+        result_unit = 'm²'
     elif calc_type == 'CENTER':
         p1 = data.get('p1', {'y': 0, 'x': 0})
         p2 = data.get('p2', {'y': 0, 'x': 0})
         p3 = data.get('p3', {'y': 0, 'x': 0})
-        c = CalculatorService.circle_center_3points(p1, p2, p3)
+        try:
+            c = CalculatorService.circle_center_3points(p1, p2, p3)
+        except SurveyingError as e:
+            return _error(str(e))
         if c is None: return _error('Points are collinear - cannot calculate circle center')
         return jsonify({'status': 'ok', 'type': calc_type,
                         'center': {'y': round(c['y'], 3), 'x': round(c['x'], 3)},
                         'radius': round(c['radius'], 3)})
     elif calc_type == 'RADIUS':
-        result = math.sqrt(v1 / math.pi) if v2 > 0 else v1 / (2 * math.pi); result_unit = 'm'
+        if v2 > 0:
+            if v1 < 0:
+                return _error('value1 must be non-negative for area-radius', 400)
+            result = math.sqrt(v1 / math.pi)
+        else:
+            if v1 < 0:
+                return _error('value1 must be non-negative for circumference-radius', 400)
+            result = v1 / (2 * math.pi)
+        result_unit = 'm'
     elif calc_type == 'CHORD':
-        result = 2 * v1 * math.sin((v2 * math.pi / 200) / 2); result_unit = 'm'
+        result = 2 * v1 * math.sin((v2 * math.pi / 200) / 2)
+        result_unit = 'm'
     return jsonify({'status': 'ok', 'type': calc_type,
                     'result': round(result, 3), 'unit': result_unit})
 
 
 @api_bp.route('/calculate/resection', methods=['POST'])
 def calculate_resection():
-    data = request.json or {}
+    data = _json_body()
     resection_type = data.get('type', '3POINTS')
     try:
         if resection_type == '3POINTS':
             station = CalculatorService.resection_3point(
-                data.get('p1', {'y': 0, 'x': 0}), data.get('angle1', 0),
-                data.get('p2', {'y': 0, 'x': 0}), data.get('angle2', 0),
-                data.get('p3', {'y': 0, 'x': 0}), data.get('angle3', 0),
+                data.get('p1', {'y': 0, 'x': 0}), _safe_num(data.get('angle1', 0)),
+                data.get('p2', {'y': 0, 'x': 0}), _safe_num(data.get('angle2', 0)),
+                data.get('p3', {'y': 0, 'x': 0}), _safe_num(data.get('angle3', 0)),
             )
             if station is None: return _error('Resection calculation failed - check angles')
             return jsonify({'status': 'ok', 'type': '3POINTS',
                             'point': {'y': round(station['y'], 3), 'x': round(station['x'], 3)}})
         elif resection_type == '2POINTS':
             r = CalculatorService.resection_2point(
-                data.get('p1', {'y': 0, 'x': 0}), data.get('dist1', 0),
-                data.get('p2', {'y': 0, 'x': 0}), data.get('dist2', 0),
+                data.get('p1', {'y': 0, 'x': 0}), _safe_num(data.get('dist1', 0)),
+                data.get('p2', {'y': 0, 'x': 0}), _safe_num(data.get('dist2', 0)),
             )
             if r is None: return _error('2-point resection failed - check distances')
             return jsonify({'status': 'ok', 'type': '2POINTS',
@@ -535,54 +683,76 @@ def calculate_resection():
         return _error('Unknown resection type')
     except SurveyingError as e:
         return _error(str(e))
+    except (KeyError, TypeError, ValueError):
+        return _error('Each point needs numeric y/x', 400)
 
 
 @api_bp.route('/calculate/interpolation', methods=['POST'])
 @login_required
 def calculate_interpolation():
-    data = request.json or {}
-    vertical_interval = data.get('vertical_interval', 0.5)
-    lines = data.get('lines', [])
+    data = _json_body()
+    try:
+        vertical_interval = _safe_num(data.get('vertical_interval', 0.5), 0.0)
+    except Exception:
+        return _error('vertical_interval must be a number', 400)
     if vertical_interval <= 0:
         return _error('Vertical interval must be positive')
-    if not lines:
+    lines = data.get('lines', [])
+    if not isinstance(lines, list) or not lines:
         return _error('No lines specified')
     fid = _current_file_id()
     if not fid:
-        return _error('No file selected')
+        return _error('No file selected', 400)
     try:
         points_dict = _points_dict_for_file(fid)
         results = CalculatorService.interpolate_points(points_dict, lines, vertical_interval)
         return jsonify({'status': 'ok', 'vertical_interval': vertical_interval, 'results': results})
     except SurveyingError as e:
         return _error(str(e))
-    except Exception as e:
-        return _error('Interpolation failed: ' + str(e))
+    except Exception:
+        return _error('Interpolation failed', 400)
 
 
 @api_bp.route('/calculate/traverse', methods=['POST'])
 def calculate_traverse():
-    data = request.json or {}
+    data = _json_body()
     points = data.get('points', [])
+    if not isinstance(points, list) or len(points) < 2:
+        return _error('Need at least 2 points for traverse')
     known_start = data.get('known_start')
     known_end = data.get('known_end')
-    if len(points) < 2:
-        return _error('Need at least 2 points for traverse')
+    # Reject half-open traverses — they're an arithmetic error, not user intent.
+    if (known_start is None) != (known_end is None):
+        return _error('known_start and known_end must be provided together', 400)
     try:
         tps = []
         for p in points:
-            az = p.get('azimuth', 0); dist = p.get('distance', 0)
-            dy, dx = CalculatorService.polar_to_cartesian(dist, az)
+            if not isinstance(p, dict):
+                continue
+            az = _safe_num(p.get('azimuth', 0))
+            dist = _safe_num(p.get('distance', 0))
+            if dist < 0:
+                return _error('distance must be non-negative', 400)
+            try:
+                dy, dx = CalculatorService.polar_to_cartesian(dist, az)
+            except SurveyingError as e:
+                return _error(str(e))
             tps.append({'no': p.get('no'),
-                        'y': p.get('y', 0), 'x': p.get('x', 0), 'h': p.get('h', 0),
+                        'y': _safe_num(p.get('y', 0)),
+                        'x': _safe_num(p.get('x', 0)),
+                        'h': _safe_num(p.get('h', 0)),
                         'delta_y': dy, 'delta_x': dx, 'distance': dist})
         result = CalculatorService.bowditch_traverse(tps, known_start, known_end)
+        # Perfect traverse: misclosure==0; report infinity instead of div-by-zero.
+        precision = (result.total_distance / result.linear_misclosure
+                     if result.linear_misclosure and result.linear_misclosure > 0
+                     else None)
         return jsonify({'status': 'ok',
                         'total_distance': result.total_distance,
                         'closure_error_y': result.closure_error_y,
                         'closure_error_x': result.closure_error_x,
                         'linear_misclosure': result.linear_misclosure,
-                        'precision_ratio': result.precision_ratio,
+                        'precision_ratio': precision,
                         'adjusted_points': result.adjusted_points})
     except SurveyingError as e:
         return _error(str(e))
@@ -591,12 +761,12 @@ def calculate_traverse():
 @api_bp.route('/calculate/freenumbers', methods=['POST'])
 @login_required
 def calculate_freenumbers():
-    data = request.json or {}
-    from_no = data.get('from_no', 1)
-    to_no = data.get('to_no', 9999)
+    data = _json_body()
+    from_no = _safe_int(data.get('from_no', 1), 1)
+    to_no = _safe_int(data.get('to_no', 9999), 9999)
     fid = _current_file_id()
     if not fid:
-        return _error('No file selected')
+        return _error('No file selected', 400)
     try:
         all_points = _points_list_for_file(fid)
         free_points = CalculatorService.get_free_numbers(all_points, from_no, to_no)
@@ -610,15 +780,20 @@ def calculate_freenumbers():
 @api_bp.route('/print/coordinates', methods=['POST'])
 @login_required
 def print_coordinates():
-    data = request.json or {}
+    data = _json_body()
     print_type = data.get('type', 'all')
-    from_no = data.get('from_no', 1)
-    to_no = data.get('to_no', 9999)
+    from_no = _safe_int(data.get('from_no', 1), 1)
+    to_no = _safe_int(data.get('to_no', 9999), 9999)
+    if from_no > to_no:
+        return _error('from_no must be <= to_no', 400)
     fid = _current_file_id()
     if not fid:
-        return _error('No file selected')
+        return _error('No file selected', 400)
+    tenant = get_current_tenant()
+    f = SurveyFile.query.filter_by(tenant_id=tenant.id if tenant else 0, id=fid).first()
+    if not f:
+        return _error('File not found', 404)
     all_points = _points_list_for_file(fid)
-    f = db.session.get(SurveyFile, fid)
     if print_type == 'single':
         filtered = [p for p in all_points if p.get('no') == from_no]
     elif print_type == 'group':
@@ -631,12 +806,12 @@ def print_coordinates():
 @api_bp.route('/print/freenumbers', methods=['POST'])
 @login_required
 def print_freenumbers():
-    data = request.json or {}
-    from_no = data.get('from_no', 1)
-    to_no = data.get('to_no', 9999)
+    data = _json_body()
+    from_no = _safe_int(data.get('from_no', 1), 1)
+    to_no = _safe_int(data.get('to_no', 9999), 9999)
     fid = _current_file_id()
     if not fid:
-        return _error('No file selected')
+        return _error('No file selected', 400)
     all_points = _points_list_for_file(fid)
     free_points = CalculatorService.get_free_numbers(all_points, from_no, to_no)
     f = db.session.get(SurveyFile, fid)
@@ -648,11 +823,11 @@ def print_freenumbers():
 def print_gridlimits():
     fid = _current_file_id()
     if not fid:
-        return _error('No file selected')
+        return _error('No file selected', 400)
     points = _points_list_for_file(fid)
     f = db.session.get(SurveyFile, fid)
     if not points:
-        return _error('No points in file')
+        return _error('No points in file', 400)
     ys = [p.get('y', 0) for p in points]
     xs = [p.get('x', 0) for p in points]
     return jsonify({
@@ -669,10 +844,10 @@ def print_gridlimits():
 def print_draw():
     fid = _current_file_id()
     if not fid:
-        return _error('No file selected')
+        return _error('No file selected', 400)
     points = _points_list_for_file(fid)
     f = db.session.get(SurveyFile, fid)
     has_heights = any(p.get('h', 0) != 0 for p in points)
     if not has_heights:
-        return jsonify({'error': 'no_heights'})
+        return _error('no_heights', 400)
     return jsonify({'points': points, 'header': f.to_dict() if f else None})

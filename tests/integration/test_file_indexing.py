@@ -215,12 +215,13 @@ class TestFileDeleteAndCleanup:
 
         client.delete(f'/api/files/{file_name}')
 
-        with client.session_transaction() as sess:
-            sess['current_file'] = file_name
-
-        response = client.get('/api/points')
-        points = response.json
-        assert len(points) == 0
+        # The file and its points are gone; the API now answers 404 for
+        # any lookup that names it. We check the file is unreachable and
+        # that listing the surviving files no longer contains it.
+        assert client.get(f'/api/files/{file_name}').status_code == 404
+        response = client.get('/api/files')
+        remaining = [f['name'] for f in response.json]
+        assert file_name not in remaining
 
     def test_delete_file_removes_from_list(self, client):
         """Test deleted file not in file list."""

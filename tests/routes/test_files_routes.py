@@ -29,13 +29,14 @@ class TestFilesRoutes:
         assert response.status_code in [302, 303]
 
     def test_new_file_post_empty_name(self, client):
-        """Test creating file with empty name."""
+        """Test creating file with empty name returns 400."""
         response = client.post('/files/new', data={
             'name': '',
             'date': '2026-08-31',
             'place': 'Test'
         })
-        assert response.status_code == 200
+        assert response.status_code == 400
+        assert b'File name is required' in response.data
 
     def test_view_file_success(self, client):
         """Test viewing existing file."""
@@ -49,9 +50,10 @@ class TestFilesRoutes:
         assert response.status_code == 200
 
     def test_view_file_not_found(self, client):
-        """Test viewing non-existent file."""
+        """Test viewing non-existent file returns 404."""
         response = client.get('/files/nonexistent_file_xyz')
-        assert response.status_code == 200
+        assert response.status_code == 404
+        assert b'File not found' in response.data
 
     def test_delete_file_post(self, client):
         """Test deleting file via POST."""
@@ -77,7 +79,7 @@ class TestFilesRoutes:
         assert response.status_code == 405
 
     def test_new_file_post_duplicate(self, client):
-        """Test creating duplicate file returns error."""
+        """Test creating duplicate file returns 400."""
         name = f'test_{int(time.time())}'
         client.post('/files/new', data={
             'name': name,
@@ -89,4 +91,5 @@ class TestFilesRoutes:
             'date': '2026-08-31',
             'place': 'Test'
         })
-        assert response.status_code == 200
+        assert response.status_code == 400
+        assert b'already exists' in response.data

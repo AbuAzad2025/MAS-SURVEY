@@ -181,6 +181,19 @@ def _lazy_log(action, entity_type=None, entity_id=None, details=None, tenant_id=
         pass
 
 
+def _strict_bool(value):
+    """Parse booleans strictly: 'false' string must not become True."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.strip().lower() in ('true', '1', 'yes'):
+        return True
+    if isinstance(value, str) and value.strip().lower() in ('false', '0', 'no'):
+        return False
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    return None
+
+
 def _ensure_plans_seeded():
     """Re-seed default plans if the table is empty.
 
@@ -208,6 +221,8 @@ def tenants_page():
 @owner_bp.route('/tenants/<int:tenant_id>')
 @super_admin_required
 def tenant_detail_page(tenant_id):
+    if not db.session.get(Tenant, tenant_id):
+        return render_template('error.html', message='Tenant not found'), 404
     return render_template('admin/tenant_detail.html')
 
 
@@ -345,9 +360,16 @@ def api_unsuspend_tenant(tenant_id):
         return jsonify({'error': 'Tenant not found'}), 404
     tenant.is_suspended = False
     try:
+        from datetime import datetime as _dt
+        now = _dt.utcnow()
         suspended_subs = Subscription.query.filter_by(tenant_id=tenant.id, status='suspended').all()
         for s in suspended_subs:
-            s.status = 'active'
+            # Only resume subscriptions that are still within their term.
+            end = getattr(s, 'end_date', None)
+            if end is None or end > now:
+                s.status = 'active'
+            else:
+                s.status = 'expired'
     except Exception:
         pass
     db.session.commit()
@@ -373,18 +395,19 @@ def api_list_subscriptions():
 @super_admin_required
 def api_create_subscription():
     data = request.get_json(silent=True) or {}
-    tenant_id = data.get('tenant_id')
-    plan_id = data.get('plan_id')
+    try:
+        tenant_id = int(data.get('tenant_id'))
+        plan_id = int(data.get('plan_id'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'tenant_id and plan_id must be integers'}), 400
     notes = data.get('notes')
-    if not tenant_id or not plan_id:
-        return jsonify({'error': 'tenant_id and plan_id required'}), 400
     _ensure_plans_seeded()
     tenant = db.session.get(Tenant, tenant_id)
     if not tenant:
         return jsonify({'error': 'Tenant not found'}), 404
     plan = db.session.get(Plan, plan_id)
-    if not plan:
-        return jsonify({'error': 'Plan not found'}), 404
+    if not plan or not getattr(plan, 'is_active', True):
+        return jsonify({'error': 'Plan not found or disabled'}), 404
     existing = (Subscription.query.filter_by(tenant_id=tenant.id, status='pending').first())
     if existing:
         return jsonify({'error': 'Tenant already has a pending subscription'}), 400
@@ -433,6 +456,8 @@ def api_approve_subscription(sub_id):
     if tenant:
         tenant.plan = plan.name
         tenant.expires_at = end
+        # Approval lifts any suspension so the tenant can proceed.
+        tenant.is_suspended = False
     db.session.commit()
     _lazy_log('subscription.approved', 'subscription', sub.id,
               f'plan={plan.name}', tenant_id=sub.tenant_id)
@@ -467,9 +492,12 @@ def api_request_subscription():
     if not plan_id:
         return jsonify({'error': 'plan_id required'}), 400
     _ensure_plans_seeded()
-    plan = db.session.get(Plan, plan_id)
-    if not plan:
-        return jsonify({'error': 'Plan not found'}), 404
+    try:
+        plan = db.session.get(Plan, int(plan_id))
+    except (TypeError, ValueError):
+        plan = None
+    if not plan or not getattr(plan, 'is_active', True):
+        return jsonify({'error': 'Plan not found or disabled'}), 404
     user = get_current_user()
     if not user:
         return jsonify({'error': 'Authentication required'}), 401
@@ -526,12 +554,21 @@ def api_create_plan():
         return jsonify({'error': 'Plan name already exists'}), 400
 
     def _int_or_default(v, default=-1):
-        if v is None:
+        if v is None or (isinstance(v, str) and not v.strip()):
             return default
         try:
             return int(v)
         except Exception:
-            return default
+            return None
+
+    for field in ('max_files', 'max_points', 'max_users'):
+        if field in data and _int_or_default(data.get(field)) is None:
+            return jsonify({'error': f'Invalid {field}'}), 400
+    is_active = True
+    if 'is_active' in data:
+        is_active = _strict_bool(data.get('is_active'))
+        if is_active is None:
+            return jsonify({'error': 'Invalid is_active'}), 400
 
     plan = Plan(
         name=name,
@@ -542,8 +579,7 @@ def api_create_plan():
         max_users=_int_or_default(data.get('max_users'), -1),
         description=data.get('description'),
     )
-    if 'is_active' in data:
-        plan.is_active = bool(data.get('is_active'))
+    plan.is_active = is_active
     db.session.add(plan)
     db.session.commit()
     _lazy_log('plan.created', 'plan', plan.id, f'plan={plan.name}', tenant_id=None)
@@ -588,7 +624,10 @@ def api_update_plan(plan_id):
     if 'description' in data:
         plan.description = data.get('description')
     if 'is_active' in data:
-        plan.is_active = bool(data.get('is_active'))
+        coerced = _strict_bool(data.get('is_active'))
+        if coerced is None:
+            return jsonify({'error': 'Invalid is_active'}), 400
+        plan.is_active = coerced
     db.session.commit()
     _lazy_log('plan.updated', 'plan', plan.id, f'plan={plan.name}', tenant_id=None)
     return jsonify({'status': 'ok', 'plan': _plan_to_dict(plan)})
@@ -600,6 +639,10 @@ def api_delete_plan(plan_id):
     plan = db.session.get(Plan, plan_id)
     if not plan:
         return jsonify({'error': 'Plan not found'}), 404
+    live = Subscription.query.filter_by(plan_id=plan.id).filter(
+        Subscription.status.in_(['pending', 'active', 'suspended'])).count()
+    if live:
+        return jsonify({'error': 'Plan has live subscriptions and cannot be retired'}), 400
     plan.is_active = False
     db.session.commit()
     return jsonify({'status': 'ok'})

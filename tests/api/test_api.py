@@ -478,14 +478,14 @@ class TestAPIPrint:
         assert response.status_code == 200
 
     def test_print_draw_no_heights(self, client):
-        """Test print draw without heights returns error JSON."""
+        """Test print draw without heights returns 400 + no_heights."""
         with client.session_transaction() as sess:
             sess.pop('current_file', None)
         name = f'test_no_heights_{int(time.time())}'
         client.post('/api/files', json={'name': name, 'date': '2026-08-31', 'place': 'Test'})
         client.post('/api/set-file', json={'filename': name})
         response = client.get('/api/print/draw')
-        assert response.status_code == 200
+        assert response.status_code == 400
         assert response.json.get('error') == 'no_heights'
 
     def test_print_coordinates_no_file(self, client):
@@ -638,10 +638,12 @@ class TestAPIPointsEdge:
     """Test points API edge cases."""
 
     def test_get_points_no_file(self, client):
-        """Test getting points when no file is set."""
+        """Getting points with no file selected is a client error (400)."""
+        with client.session_transaction() as sess:
+            sess.pop('current_file', None)
         response = client.get('/api/points')
-        assert response.status_code == 200
-        assert response.json == []
+        assert response.status_code == 400
+        assert 'error' in response.json
 
     def test_save_points_no_file(self, client):
         """Test saving points when no file is set."""

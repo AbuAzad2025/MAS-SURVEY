@@ -15,22 +15,38 @@ MAS_TEMPLATES = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templa
 main_bp = Blueprint('main', __name__, template_folder=MAS_TEMPLATES)
 
 
+@main_bp.before_request
+def _ensure_tenant():
+    """Tenantless users (broken state) go to the waiting room."""
+    from flask import redirect, url_for
+    if get_current_tenant() is None:
+        return redirect(url_for('landing.waiting'))
+
+
 # --- helpers -----------------------------------------------------------
+
+def _file_info_dict():
+    """Current file as dict or None (single DB hit per call site)."""
+    f = _get_current_file_info()
+    return f.to_dict() if f else None
+
 
 def _get_settings() -> dict:
     """Tenant settings, cached in session."""
     if 'settings' not in session:
-        session['settings'] = Settings.get_all(get_current_tenant().id)
+        tenant = get_current_tenant()
+        session['settings'] = Settings.get_all(tenant.id) if tenant else {}
     return session['settings']
 
 
 def _get_current_file_info():
     """Return SurveyFile or None for the current working file."""
     name = session.get('current_file')
-    if not name:
+    tenant = get_current_tenant()
+    if not name or tenant is None:
         return None
     return SurveyFile.query.filter_by(
-        tenant_id=get_current_tenant().id, name=name
+        tenant_id=tenant.id, name=name
     ).first()
 
 
@@ -81,7 +97,7 @@ def polar():
 @main_bp.route('/offsets')
 @login_required
 def offsets():
-    return render_template('offsets.html', file_info=_get_current_file_info().to_dict() if _get_current_file_info() else None)
+    return render_template('offsets.html', file_info=_file_info_dict())
 
 
 @main_bp.route('/circle')
@@ -99,13 +115,13 @@ def intersections():
 @main_bp.route('/implants')
 @login_required
 def implants():
-    return render_template('implants.html', file_info=_get_current_file_info().to_dict() if _get_current_file_info() else None)
+    return render_template('implants.html', file_info=_file_info_dict())
 
 
 @main_bp.route('/resection')
 @login_required
 def resection():
-    return render_template('resection.html', file_info=_get_current_file_info().to_dict() if _get_current_file_info() else None)
+    return render_template('resection.html', file_info=_file_info_dict())
 
 
 @main_bp.route('/area')
@@ -131,8 +147,7 @@ def traverse():
 @main_bp.route('/plotting')
 @login_required
 def plotting():
-    return render_template('plotting.html',
-                           file_info=_get_current_file_info().to_dict() if _get_current_file_info() else None)
+    return render_template('plotting.html', file_info=_file_info_dict())
 
 
 @main_bp.route('/plan')

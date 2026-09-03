@@ -3,7 +3,7 @@ File management routes for MAS - tenant-scoped.
 """
 import os
 from flask import (Blueprint, render_template, session, redirect, url_for,
-                   request, abort)
+                   request)
 
 from app.shared.models import db, SurveyFile, SurveyPoint
 from app.shared.middleware import (
@@ -15,6 +15,13 @@ from app.shared.middleware import (
 MAS_TEMPLATES = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates')
 
 files_bp = Blueprint('files', __name__, template_folder=MAS_TEMPLATES)
+
+
+@files_bp.before_request
+def _ensure_tenant():
+    """Tenantless users (broken state) go to the waiting room."""
+    if get_current_tenant() is None:
+        return redirect(url_for('landing.waiting'))
 
 
 @files_bp.route('/files')
@@ -38,20 +45,18 @@ def new_file():
         place = data.get('place') or ''
 
         if not name:
-            return render_template('error.html', message='File name is required')
+            return render_template('error.html', message='File name is required'), 400
+        if len(name) > 200:
+            return render_template('error.html', message='File name too long (max 200)'), 400
 
         tenant = get_current_tenant()
         reason = tenant_block_reason(tenant)
         if reason == 'suspended':
             return render_template(
-                'error.html', message='Account suspended, contact platform owner')
-        if reason == 'expired':
+                'error.html', message='Account suspended, contact platform owner'), 403
+        if reason in ('expired', 'no_tenant'):
             return render_template(
-                'error.html', message='Subscription expired, please renew')
-        if reason == 'no_tenant':
-            return render_template('error.html', message='No tenant found')
-        if tenant is None:
-            return render_template('error.html', message='No tenant found')
+                'error.html', message='Subscription expired, please renew'), 403
 
         try:
             limits = get_plan_limits(getattr(tenant, 'plan', 'none'))
@@ -72,7 +77,7 @@ def new_file():
             tenant_id=tenant.id, name=name
         ).first()
         if existing:
-            return render_template('error.html', message='File already exists')
+            return render_template('error.html', message='File already exists'), 400
 
         f = SurveyFile(
             tenant_id=tenant.id,
@@ -95,7 +100,7 @@ def view_file(name):
         tenant_id=get_current_tenant().id, name=name
     ).first()
     if not f:
-        return render_template('error.html', message='File not found')
+        return render_template('error.html', message='File not found'), 404
 
     session['current_file'] = name
 
@@ -113,9 +118,11 @@ def delete_file(name):
     f = SurveyFile.query.filter_by(
         tenant_id=get_current_tenant().id, name=name
     ).first()
-    if f:
-        db.session.delete(f)
-        db.session.commit()
+    if not f:
+        return render_template('error.html', message='File not found'), 404
+    # Points cascade via SurveyFile.points relationship (delete-orphan).
+    db.session.delete(f)
+    db.session.commit()
     if session.get('current_file') == name:
         session.pop('current_file', None)
     return redirect(url_for('files.list_files'))

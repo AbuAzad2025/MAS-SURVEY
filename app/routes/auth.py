@@ -28,12 +28,16 @@ def login():
             return redirect(url_for('landing.index'))
         return render_template('login.html')
 
-    data = request.json if request.is_json else request.form
-    username = (data.get('username') or '').strip()
+    data = request.get_json(silent=True) or {}
+    if not data:
+        data = request.form
+    username = str(data.get('username') or '').strip()
     password = data.get('password') or ''
 
     if not username or not password:
         return jsonify({'error': 'Username and password required'}), 400
+    if not isinstance(password, str):
+        return jsonify({'error': 'Invalid credentials'}), 401
 
     user = User.query.filter_by(username=username, is_active=True).first()
     if not user or not user.check_password(password):
@@ -69,7 +73,7 @@ def login():
 
 @auth_bp.route('/logout', methods=['POST', 'GET'])
 def logout():
-    """Logout handler."""
+    """Logout handler (always JSON; callers redirect client-side)."""
     session.clear()
     return jsonify({'status': 'ok', 'redirect': url_for('auth.login')})
 
@@ -89,14 +93,14 @@ def current_user_info():
 @login_required
 def change_password():
     """Change password for current user."""
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     old_password = data.get('old_password', '')
     new_password = data.get('new_password', '')
 
     if not old_password or not new_password:
         return jsonify({'error': 'Old and new password required'}), 400
 
-    if len(new_password) < 6:
+    if not isinstance(new_password, str) or len(new_password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters'}), 400
 
     user = get_current_user()
@@ -137,19 +141,28 @@ def register():
             owner=SUPER_ADMIN_INFO,
         )
 
-    data = request.json if request.is_json else request.form
-    username = (data.get('username') or '').strip()
+    import re
+    data = request.get_json(silent=True) or {}
+    if not data:
+        data = request.form
+    username = str(data.get('username') or '').strip()
     password = data.get('password') or ''
-    full_name = (data.get('full_name') or '').strip() or None
-    email = (data.get('email') or '').strip() or None
-    phone = (data.get('phone') or '').strip() or None
-    whatsapp = (data.get('whatsapp') or '').strip() or None
+    full_name = str(data.get('full_name') or '').strip() or None
+    email = str(data.get('email') or '').strip() or None
+    phone = str(data.get('phone') or '').strip() or None
+    whatsapp = str(data.get('whatsapp') or '').strip() or None
     plan_id = data.get('plan_id')
 
     if not username or not password:
         return jsonify({'error': 'Username and password required'}), 400
-    if len(password) < 6:
+    if not isinstance(password, str) or len(password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters'}), 400
+    if len(username) > 80 or not re.match(r'^[\w.@+-]+$', username):
+        return jsonify({'error': 'Username must be 1-80 chars: letters, digits, _ . @ + -'}), 400
+    for label, value, limit in (('Full name', full_name, 120), ('Email', email, 120),
+                                ('Phone', phone, 20), ('WhatsApp', whatsapp, 30)):
+        if value is not None and len(value) > limit:
+            return jsonify({'error': f'{label} is too long (max {limit})'}), 400
     if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already exists'}), 400
     if email and User.query.filter_by(email=email).first():
@@ -164,21 +177,26 @@ def register():
         if not plan:
             return jsonify({'error': 'Selected package is not available'}), 400
 
-    user = User(username=username, email=email, phone=phone, whatsapp=whatsapp,
-                role=Role.REGISTERED, full_name=full_name, is_active=True)
-    user.set_password(password)
-    db.session.add(user)
-    db.session.flush()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        user = User(username=username, email=email, phone=phone, whatsapp=whatsapp,
+                    role=Role.REGISTERED, full_name=full_name, is_active=True)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.flush()
 
-    tenant = Tenant(owner_id=user.id, name=username, plan='none', expires_at=None)
-    db.session.add(tenant)
-    db.session.flush()
-    db.session.add(TenantUser(tenant_id=tenant.id, user_id=user.id, role='owner'))
+        tenant = Tenant(owner_id=user.id, name=username, plan='none', expires_at=None)
+        db.session.add(tenant)
+        db.session.flush()
+        db.session.add(TenantUser(tenant_id=tenant.id, user_id=user.id, role='owner'))
 
-    if plan:
-        db.session.add(Subscription(tenant_id=tenant.id, plan_id=plan.id,
-                                    status='pending'))
-    db.session.commit()
+        if plan:
+            db.session.add(Subscription(tenant_id=tenant.id, plan_id=plan.id,
+                                        status='pending'))
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Username or email already exists'}), 400
 
     return jsonify({
         'status': 'ok',

@@ -112,37 +112,5 @@ class TestMainRoutesWithFile:
         assert response.status_code == 200
 
 
-class TestFileRoutes:
-    """Test file management routes."""
-
-    def test_list_files_page(self, client):
-        """Test files list page loads."""
-        response = client.get('/files')
-        assert response.status_code == 200
-
-    def test_new_file_page(self, client):
-        """Test new file page loads."""
-        response = client.get('/files/new')
-        assert response.status_code == 200
-
-    def test_view_file_page(self, client):
-        """Test view file page loads."""
-        name = f'test_file_{int(time.time())}'
-        client.post('/api/files', json={
-            'name': name,
-            'date': '2026-08-31',
-            'place': 'Test'
-        })
-        response = client.get(f'/files/{name}')
-        assert response.status_code in [200, 404]
-
-    def test_delete_file_method_not_allowed(self, client):
-        """Test delete file needs POST not GET."""
-        name = f'test_file_{int(time.time())}'
-        client.post('/api/files', json={
-            'name': name,
-            'date': '2026-08-31',
-            'place': 'Test'
-        })
-        response = client.get(f'/files/{name}/delete')
-        assert response.status_code == 405
+# NOTE: file-management routes are covered once, thoroughly, in
+# tests/routes/test_files_routes.py (no duplication here).

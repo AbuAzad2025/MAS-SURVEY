@@ -30,7 +30,10 @@ def _load_user() -> 'User | None':
     user_id = session.get('user_id')
     if not user_id:
         return None
-    user = db.session.get(User, user_id)
+    try:
+        user = db.session.get(User, user_id)
+    except Exception:
+        return None
     if user and not user.is_active:
         session.clear()
         return None
@@ -56,7 +59,7 @@ def tenant_scope(query):
     """Filter any SQLAlchemy query by current tenant. Empty if not signed in."""
     tenant = _load_tenant()
     if tenant is None:
-        return query.filter('1=0')
+        return query.filter(db.false())
     return query.filter_by(tenant_id=tenant.id)
 
 
@@ -88,7 +91,6 @@ def super_admin_required(f):
             if _is_api_request():
                 return jsonify({'error': 'Authentication required'}), 401
             return redirect(url_for('auth.login', next=request.path))
-            return redirect(url_for('auth.login', next=request.path))
         if user.role != Role.SUPER_ADMIN:
             return jsonify({'error': 'Super admin required'}), 403
         return f(*args, **kwargs)
@@ -111,44 +113,28 @@ def get_plan_limits(plan_name) -> dict:
     """
     fallback = dict(_FALLBACK_LIMITS)
     try:
-        name = (plan_name or 'none')
-        # Normalize to string
+        from .models import Plan
+    except Exception:
+        return fallback
+    try:
         try:
-            name = str(name).strip() or 'none'
+            name = str(plan_name or 'none').strip() or 'none'
         except Exception:
             name = 'none'
-        Plan = None
-        try:
-            from .models.billing import Plan as _Plan  # type: ignore
-            Plan = _Plan
-        except Exception:
-            try:
-                from app.shared.models.billing import Plan as _Plan2  # type: ignore
-                Plan = _Plan2
-            except Exception:
-                return fallback
-        if Plan is None:
-            return fallback
-        try:
-            if Plan.query.count() == 0:
-                try:
-                    from .models.billing import seed_default_plans as _seed
-                    _seed()
-                except Exception:
-                    try:
-                        from app.shared.models.billing import seed_default_plans as _seed2
-                        _seed2()
-                    except Exception:
-                        pass
-        except Exception:
-            pass
         plan = Plan.query.filter_by(name=name, is_active=True).first()
+        if plan is None:
+            try:
+                from .models import seed_default_plans
+                seed_default_plans()
+            except Exception:
+                pass
+            plan = Plan.query.filter_by(name=name, is_active=True).first()
         if plan is None:
             return fallback
         return {
-            'max_files': getattr(plan, 'max_files', fallback['max_files']),
-            'max_points': getattr(plan, 'max_points', fallback['max_points']),
-            'max_users': getattr(plan, 'max_users', fallback['max_users']),
+            'max_files': plan.max_files if plan.max_files is not None else -1,
+            'max_points': plan.max_points if plan.max_points is not None else -1,
+            'max_users': plan.max_users if plan.max_users is not None else -1,
         }
     except Exception:
         return fallback
