@@ -160,7 +160,7 @@ async function calculatePolarPoints() {
     const polarTypes = ['', 'DISTOMAT', 'TACHEOMETRY', 'AZIMUTH'];
     
     try {
-        const response = await fetch('/calculate/polar', {
+        const response = await fetch('/api/calculate/polar', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({

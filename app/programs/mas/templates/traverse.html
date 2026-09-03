@@ -226,7 +226,7 @@ async function calculateTraverse() {
     }
     
     try {
-        var response = await fetch('/calculate/traverse', {
+        var response = await fetch('/api/calculate/traverse', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({

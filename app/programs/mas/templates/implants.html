@@ -95,7 +95,7 @@ async function calculateImplant() {
         const baseX = basePoint.x;
         const baseH = basePoint.h || 0;
         
-        const implantResponse = await fetch('/calculate/implant', {
+        const implantResponse = await fetch('/api/calculate/implant', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({

@@ -3,9 +3,9 @@ MAS main routes - contained in the MAS program package.
 PostgreSQL + SQLAlchemy + tenant-scoped.
 """
 import os
-from flask import Blueprint, render_template, session, current_app
+from flask import Blueprint, render_template, session
 
-from app.shared.models import db, SurveyFile, SurveyPoint, Settings
+from app.shared.models import SurveyFile, SurveyPoint, Settings
 from app.shared.middleware import (
     login_required, get_current_tenant,
 )

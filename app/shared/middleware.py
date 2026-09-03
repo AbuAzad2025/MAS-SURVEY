@@ -14,9 +14,9 @@ Plus helpers for tenant-scoped queries:
 """
 from functools import wraps
 
-from flask import g, session, redirect, url_for, request, jsonify
+from flask import session, redirect, url_for, request, jsonify
 
-from .models import User, Tenant, TenantUser, Role
+from .models import db, User, Tenant, TenantUser, Role
 
 
 # --- user/tenant context ------------------------------------------------
@@ -30,7 +30,7 @@ def _load_user() -> 'User | None':
     user_id = session.get('user_id')
     if not user_id:
         return None
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if user and not user.is_active:
         session.clear()
         return None

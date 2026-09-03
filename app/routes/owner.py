@@ -26,7 +26,7 @@ def _tenant_to_dict(tenant) -> dict:
         if owner is not None:
             owner_username = owner.username
         else:
-            u = User.query.get(tenant.owner_id) if getattr(tenant, 'owner_id', None) else None
+            u = db.session.get(User, tenant.owner_id) if getattr(tenant, 'owner_id', None) else None
             owner_username = u.username if u else None
     except Exception:
         owner_username = None
@@ -70,7 +70,7 @@ def _subscription_to_dict(sub) -> dict:
         if t is not None and getattr(t, 'name', None):
             tenant_name = t.name
         else:
-            tenant = Tenant.query.get(sub.tenant_id) if getattr(sub, 'tenant_id', None) else None
+            tenant = db.session.get(Tenant, sub.tenant_id) if getattr(sub, 'tenant_id', None) else None
             tenant_name = tenant.name if tenant else None
     except Exception:
         tenant_name = None
@@ -83,7 +83,7 @@ def _subscription_to_dict(sub) -> dict:
             plan_name = getattr(p, 'name', None)
             price = getattr(p, 'price', None)
         else:
-            plan = Plan.query.get(sub.plan_id) if getattr(sub, 'plan_id', None) else None
+            plan = db.session.get(Plan, sub.plan_id) if getattr(sub, 'plan_id', None) else None
             if plan:
                 plan_name = plan.name
                 price = plan.price
@@ -99,11 +99,11 @@ def _subscription_to_dict(sub) -> dict:
         owner_user = None
         t = getattr(sub, 'tenant', None)
         if t is not None and getattr(t, 'owner_id', None):
-            owner_user = _User.query.get(t.owner_id)
+            owner_user = db.session.get(_User, t.owner_id)
         elif getattr(sub, 'tenant_id', None):
-            tenant = Tenant.query.get(sub.tenant_id)
+            tenant = db.session.get(Tenant, sub.tenant_id)
             if tenant is not None and getattr(tenant, 'owner_id', None):
-                owner_user = _User.query.get(tenant.owner_id)
+                owner_user = db.session.get(_User, tenant.owner_id)
         if owner_user is not None:
             contact = {
                 'username': owner_user.username,
@@ -161,7 +161,7 @@ def _active_sub_dict(tenant_id):
     try:
         plan_name = sub.plan.name if getattr(sub, 'plan', None) else None
         if plan_name is None and getattr(sub, 'plan_id', None):
-            p = Plan.query.get(sub.plan_id)
+            p = db.session.get(Plan, sub.plan_id)
             plan_name = p.name if p else None
     except Exception:
         pass
@@ -283,7 +283,7 @@ def api_list_tenants():
 @owner_bp.route('/api/tenants/<int:tenant_id>', methods=['GET'])
 @super_admin_required
 def api_tenant_detail(tenant_id):
-    tenant = Tenant.query.get(tenant_id)
+    tenant = db.session.get(Tenant, tenant_id)
     if not tenant:
         return jsonify({'error': 'Tenant not found'}), 404
     tdict = _tenant_to_dict(tenant)
@@ -321,7 +321,7 @@ def api_tenant_detail(tenant_id):
 @owner_bp.route('/api/tenants/<int:tenant_id>/suspend', methods=['POST'])
 @super_admin_required
 def api_suspend_tenant(tenant_id):
-    tenant = Tenant.query.get(tenant_id)
+    tenant = db.session.get(Tenant, tenant_id)
     if not tenant:
         return jsonify({'error': 'Tenant not found'}), 404
     tenant.is_suspended = True
@@ -340,7 +340,7 @@ def api_suspend_tenant(tenant_id):
 @owner_bp.route('/api/tenants/<int:tenant_id>/unsuspend', methods=['POST'])
 @super_admin_required
 def api_unsuspend_tenant(tenant_id):
-    tenant = Tenant.query.get(tenant_id)
+    tenant = db.session.get(Tenant, tenant_id)
     if not tenant:
         return jsonify({'error': 'Tenant not found'}), 404
     tenant.is_suspended = False
@@ -379,10 +379,10 @@ def api_create_subscription():
     if not tenant_id or not plan_id:
         return jsonify({'error': 'tenant_id and plan_id required'}), 400
     _ensure_plans_seeded()
-    tenant = Tenant.query.get(tenant_id)
+    tenant = db.session.get(Tenant, tenant_id)
     if not tenant:
         return jsonify({'error': 'Tenant not found'}), 404
-    plan = Plan.query.get(plan_id)
+    plan = db.session.get(Plan, plan_id)
     if not plan:
         return jsonify({'error': 'Plan not found'}), 404
     existing = (Subscription.query.filter_by(tenant_id=tenant.id, status='pending').first())
@@ -397,7 +397,7 @@ def api_create_subscription():
 @owner_bp.route('/api/subscriptions/<int:sub_id>/approve', methods=['POST'])
 @super_admin_required
 def api_approve_subscription(sub_id):
-    sub = Subscription.query.get(sub_id)
+    sub = db.session.get(Subscription, sub_id)
     if not sub:
         return jsonify({'error': 'Subscription not found'}), 404
     if sub.status != 'pending':
@@ -408,7 +408,7 @@ def api_approve_subscription(sub_id):
     except Exception:
         plan = None
     if plan is None:
-        plan = Plan.query.get(sub.plan_id)
+        plan = db.session.get(Plan, sub.plan_id)
     if not plan:
         return jsonify({'error': 'Plan not found'}), 404
     now = datetime.utcnow()
@@ -429,7 +429,7 @@ def api_approve_subscription(sub_id):
     user = get_current_user()
     sub.approved_by = user.id if user else session.get('user_id')
     sub.approved_at = now
-    tenant = Tenant.query.get(sub.tenant_id)
+    tenant = db.session.get(Tenant, sub.tenant_id)
     if tenant:
         tenant.plan = plan.name
         tenant.expires_at = end
@@ -442,7 +442,7 @@ def api_approve_subscription(sub_id):
 @owner_bp.route('/api/subscriptions/<int:sub_id>/reject', methods=['POST'])
 @super_admin_required
 def api_reject_subscription(sub_id):
-    sub = Subscription.query.get(sub_id)
+    sub = db.session.get(Subscription, sub_id)
     if not sub:
         return jsonify({'error': 'Subscription not found'}), 404
     if sub.status != 'pending':
@@ -467,7 +467,7 @@ def api_request_subscription():
     if not plan_id:
         return jsonify({'error': 'plan_id required'}), 400
     _ensure_plans_seeded()
-    plan = Plan.query.get(plan_id)
+    plan = db.session.get(Plan, plan_id)
     if not plan:
         return jsonify({'error': 'Plan not found'}), 404
     user = get_current_user()
@@ -477,7 +477,7 @@ def api_request_subscription():
     if tenant is None:
         try:
             membership = TenantUser.query.filter_by(user_id=user.id).first()
-            tenant = Tenant.query.get(membership.tenant_id) if membership else None
+            tenant = db.session.get(Tenant, membership.tenant_id) if membership else None
         except Exception:
             tenant = None
     if tenant is None:
@@ -553,7 +553,7 @@ def api_create_plan():
 @owner_bp.route('/api/plans/<int:plan_id>', methods=['PUT'])
 @super_admin_required
 def api_update_plan(plan_id):
-    plan = Plan.query.get(plan_id)
+    plan = db.session.get(Plan, plan_id)
     if not plan:
         return jsonify({'error': 'Plan not found'}), 404
     data = request.get_json(silent=True) or {}
@@ -597,7 +597,7 @@ def api_update_plan(plan_id):
 @owner_bp.route('/api/plans/<int:plan_id>', methods=['DELETE'])
 @super_admin_required
 def api_delete_plan(plan_id):
-    plan = Plan.query.get(plan_id)
+    plan = db.session.get(Plan, plan_id)
     if not plan:
         return jsonify({'error': 'Plan not found'}), 404
     plan.is_active = False

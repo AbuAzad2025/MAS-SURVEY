@@ -170,7 +170,7 @@ async function calculateCircle() {
     }
     
     try {
-        const response = await fetch('/calculate/circle', {
+        const response = await fetch('/api/calculate/circle', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(requestBody)

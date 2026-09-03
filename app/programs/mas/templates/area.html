@@ -106,7 +106,7 @@ async function calculateArea() {
     }
     
     try {
-        const response = await fetch('/calculate/area', {
+        const response = await fetch('/api/calculate/area', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({points: points})

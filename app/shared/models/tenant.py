@@ -2,7 +2,7 @@
 Tenant model - every user gets a tenant (workspace) of their own.
 Multi-tenant with single user per tenant; team plans can be added later.
 """
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from .base import db
 

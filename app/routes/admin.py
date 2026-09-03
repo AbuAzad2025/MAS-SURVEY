@@ -5,10 +5,9 @@ PostgreSQL + SQLAlchemy + multi-tenant.
 import sys
 import os
 from flask import Blueprint, request, jsonify, session, render_template
-from sqlalchemy import func
 
-from app.shared.models import db, User, Role, SurveyFile, SurveyPoint, Settings, SystemLog
-from app.shared.middleware import super_admin_required, login_required, get_current_user
+from app.shared.models import db, User, Role, Tenant, SurveyFile, SystemLog
+from app.shared.middleware import super_admin_required
 
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -68,7 +67,15 @@ def admin_files():
     payload = []
     for f in files:
         d = f.to_dict()
-        d['owner_username'] = User.query.get(f.tenant_id).owned_tenant.owner.username if User.query.get(f.tenant_id) else None
+        owner_username = None
+        try:
+            tenant = db.session.get(Tenant, f.tenant_id)
+            if tenant is not None and getattr(tenant, 'owner_id', None):
+                owner = db.session.get(User, tenant.owner_id)
+                owner_username = owner.username if owner else None
+        except Exception:
+            owner_username = None
+        d['owner_username'] = owner_username
         payload.append(d)
     return render_template('admin/files.html', files=payload)
 
@@ -137,7 +144,7 @@ def api_create_user():
 @admin_bp.route('/api/users/<int:user_id>', methods=['GET'])
 @super_admin_required
 def api_get_user(user_id):
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
     return jsonify(user.to_dict())
@@ -148,7 +155,7 @@ def api_get_user(user_id):
 def api_update_user(user_id):
     if user_id == session.get('user_id'):
         return jsonify({'error': 'Cannot modify yourself via API'}), 400
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -168,7 +175,7 @@ def api_update_user(user_id):
 def api_delete_user(user_id):
     if user_id == session.get('user_id'):
         return jsonify({'error': 'Cannot delete yourself'}), 400
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
     user.is_active = False
@@ -183,7 +190,7 @@ def api_reset_password(user_id):
     new_password = data.get('new_password') or ''
     if len(new_password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters'}), 400
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
     user.set_password(new_password)

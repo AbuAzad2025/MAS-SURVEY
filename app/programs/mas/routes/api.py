@@ -6,8 +6,7 @@ import re
 import struct
 import math
 from datetime import datetime
-from flask import Blueprint, request, jsonify, session, current_app
-from sqlalchemy import func
+from flask import Blueprint, request, jsonify, session
 
 from app.services.calculator import CalculatorService, SurveyingError
 from app.shared.models import db, SurveyFile, SurveyPoint, Settings
@@ -306,7 +305,7 @@ def save_points():
     data = request.json or {}
     new_points = data.get('points', [])
 
-    f = SurveyFile.query.get(fid)
+    f = db.session.get(SurveyFile, fid)
     if not f:
         return _error('No file selected')
 
@@ -619,7 +618,7 @@ def print_coordinates():
     if not fid:
         return _error('No file selected')
     all_points = _points_list_for_file(fid)
-    f = SurveyFile.query.get(fid)
+    f = db.session.get(SurveyFile, fid)
     if print_type == 'single':
         filtered = [p for p in all_points if p.get('no') == from_no]
     elif print_type == 'group':
@@ -640,7 +639,7 @@ def print_freenumbers():
         return _error('No file selected')
     all_points = _points_list_for_file(fid)
     free_points = CalculatorService.get_free_numbers(all_points, from_no, to_no)
-    f = SurveyFile.query.get(fid)
+    f = db.session.get(SurveyFile, fid)
     return jsonify({'points': free_points, 'header': f.to_dict() if f else None})
 
 
@@ -651,7 +650,7 @@ def print_gridlimits():
     if not fid:
         return _error('No file selected')
     points = _points_list_for_file(fid)
-    f = SurveyFile.query.get(fid)
+    f = db.session.get(SurveyFile, fid)
     if not points:
         return _error('No points in file')
     ys = [p.get('y', 0) for p in points]
@@ -672,7 +671,7 @@ def print_draw():
     if not fid:
         return _error('No file selected')
     points = _points_list_for_file(fid)
-    f = SurveyFile.query.get(fid)
+    f = db.session.get(SurveyFile, fid)
     has_heights = any(p.get('h', 0) != 0 for p in points)
     if not has_heights:
         return jsonify({'error': 'no_heights'})

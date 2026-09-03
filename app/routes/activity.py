@@ -4,7 +4,7 @@ Activity viewer routes (super admin only).
 from flask import Blueprint, request, jsonify, render_template
 
 from app.shared.middleware import super_admin_required
-from app.shared.models import User
+from app.shared.models import db, User
 from app.shared.models.billing import ActivityLog
 
 
@@ -39,7 +39,7 @@ def api_activity():
     for r in rows:
         username = None
         if r.user_id:
-            u = User.query.get(r.user_id)
+            u = db.session.get(User, r.user_id)
             username = u.username if u else None
         logs.append({
             'id': r.id,

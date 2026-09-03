@@ -562,7 +562,7 @@ async function calculateInterpolation() {
     }
     
     try {
-        var response = await fetch('/calculate/interpolation', {
+        var response = await fetch('/api/calculate/interpolation', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
