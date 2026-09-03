@@ -1,12 +1,15 @@
-name: PR Test
+name: CI
 
 on:
+  push:
+    branches: [main, master, develop]
   pull_request:
     branches: [main, master, develop]
+  workflow_dispatch:
 
 jobs:
   test:
-    name: Test Suite
+    name: Test (unit + api + routes + cli + integration + e2e)
     runs-on: ubuntu-latest
 
     services:
@@ -25,7 +28,7 @@ jobs:
           --health-retries 5
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -39,8 +42,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run pytest
+      - name: Install Playwright browser
+        run: |
+          playwright install chromium --with-deps || python -m playwright install chromium
+
+      - name: Run full test suite
         env:
           DB_PASSWORD: 123
         run: |
-          pytest tests/ -q -p no:cacheprovider --no-cov --ignore=tests/e2e --tb=short
+          pytest tests/ --tb=short -p no:cacheprovider --no-cov
