@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - User Management{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        [ U S E R &nbsp; M A N A G E M E N T ]
+    </div>
+
+    <div class="card-body">
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #004400; flex-wrap: wrap;">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="font-size: 12px;">[ DASHBOARD ]</a>
+            <a href="{{ url_for('admin.admin_users') }}" class="btn btn-primary" style="font-size: 12px;">[ USERS ]</a>
+            <a href="{{ url_for('admin.admin_files') }}" class="btn" style="font-size: 12px;">[ FILES ]</a>
+            <a href="{{ url_for('admin.admin_settings') }}" class="btn" style="font-size: 12px;">[ SETTINGS ]</a>
+            <a href="{{ url_for('admin.admin_logs') }}" class="btn" style="font-size: 12px;">[ LOGS ]</a>
+            <a href="{{ url_for('main.mas_menu') }}" class="btn" style="font-size: 12px;">[ MAS MENU ]</a>
+        </div>
+
+        <div class="table-responsive">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">ID</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Username</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Full Name</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Role</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Email</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Active</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Last Login</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td style="border:1px solid #004400;padding:6px;">{{ u.id }}</td>
+                        <td style="border:1px solid #004400;padding:6px;">{{ u.username }}</td>
+                        <td style="border:1px solid #004400;padding:6px;">{{ u.full_name or '-' }}</td>
+                        <td style="border:1px solid #004400;padding:6px;">{{ u.role }}</td>
+                        <td style="border:1px solid #004400;padding:6px;">{{ u.email or '-' }}</td>
+                        <td style="border:1px solid #004400;padding:6px;">{{ 'Yes' if u.is_active else 'No' }}</td>
+                        <td style="border:1px solid #004400;padding:6px;">{{ u.last_login or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

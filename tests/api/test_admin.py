@@ -385,5 +385,12 @@ class TestAdminNavigation:
         response = client.get('/admin/files')
         assert response.status_code == 200
 
+    def test_users_page(self, client, super_admin_user):
+        """Test users page renders (regression: template must exist)."""
+        client.post('/auth/login', json={'username': super_admin_user['username'], 'password': 'admin123'})
+        response = client.get('/admin/users')
+        assert response.status_code == 200
+        assert super_admin_user['username'].encode() in response.data
+
 
 import time
