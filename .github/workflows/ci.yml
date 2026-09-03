@@ -121,40 +121,43 @@ jobs:
       - name: Report
         if: always()
         run: |
-          echo "## backend" >> $GITHUB_STEP_SUMMARY
-          echo "- pytest: ${{ steps.backend-tests.outcome }}" >> $GITHUB_STEP_SUMMARY
-          if [ -f artifacts/backend-junit.xml ]; then
-            pass=$(grep -oE 'tests="[0-9]+" .* failures="[0-9]+"' artifacts/backend-junit.xml | head -1)
-            echo "- summary: $pass" >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "## backend"
+            echo "- pytest: ${{ steps.backend-tests.outcome }}"
+            if [ -f artifacts/backend-junit.xml ]; then
+              grep -oE 'tests="[0-9]+" .* failures="[0-9]+"' \
+                artifacts/backend-junit.xml | head -1 \
+                | awk '{print "- summary: " $0}'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   frontend:
     name: Frontend (CSS/JS + templates)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Static inventory
+      - name: Frontend inventory
         run: |
           mkdir -p artifacts
           {
             echo "# Frontend inventory"
             echo
             echo "## HTML templates"
-            find app/templates -name "*.html" -printf "| %p | %s bytes |\n" 2>/dev/null
+            find app/templates -name "*.html" -printf "| %p | %s bytes |" 2>/dev/null
             echo
             echo "## CSS"
-            find app/static/css -name "*.css" -printf "| %p | %s bytes |\n" 2>/dev/null
+            find app/static/css -name "*.css" -printf "| %p | %s bytes |" 2>/dev/null
             echo
             echo "## JavaScript"
-            find app/static/js -name "*.js" -printf "| %p | %s bytes |\n" 2>/dev/null
+            find app/static/js -name "*.js" -printf "| %p | %s bytes |" 2>/dev/null
             echo
             echo "## Jinja url_for endpoints"
-            grep -hRhoE "url_for\('[a-z_]+'\)" app/templates/ 2>/dev/null | sort -u
+            grep -hRhoE "url_for..[a-z_]+..$" app/templates/ 2>/dev/null | sort -u
             echo
             echo "## API routes referenced by templates/JS"
-            grep -hRhoE "fetch\(['\"]/[a-zA-Z0-9_/{}]+['\"]" app/templates/ app/static/ 2>/dev/null \
-              | sort -u | head -40
+            grep -hRhoE "fetch..[/.A-Za-z0-9_/$]+.." app/templates/ app/static/ 2>/dev/null | sort -u | head -40
           } > artifacts/frontend-inventory.md
+          cat artifacts/frontend-inventory.md
       - name: Upload frontend inventory
         if: always()
         uses: actions/upload-artifact@v4
@@ -263,24 +266,11 @@ jobs:
       - name: Coverage summary
         if: always()
         run: |
-          python -c "
-import json, sys
-try:
-  d = json.load(open('artifacts/coverage.json'))
-  t = d['totals']
-  print(f\"TOTAL  {t['percent_covered_display']}  ({t['covered_lines']}/{t['num_statements']} lines)\")
-  for f in sorted(d['files'], key=lambda x: x['summary']['percent_covered']):
-      s = f['summary']
-      if s['num_statements'] == 0: continue
-      print(f\"  {s['percent_covered_display']:>6}  {f['filename']}\")
-except Exception as e:
-  print('no coverage', e)
-" | tee artifacts/coverage-summary.txt
-          echo "## coverage" >> $GITHUB_STEP_SUMMARY
-          echo "- run:  ${{ steps.full-coverage.outcome }}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          head -40 artifacts/coverage-summary.txt >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          mkdir -p artifacts
+          python scripts/coverage_summary.py
+          echo "## coverage" >> "$GITHUB_STEP_SUMMARY"
+          echo "- run:  ${{ steps.full-coverage.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          head -40 artifacts/coverage-summary.txt >> "$GITHUB_STEP_SUMMARY" || true
       - name: Upload coverage artifacts
         if: always()
         uses: actions/upload-artifact@v4
