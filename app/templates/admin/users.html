@@ -51,6 +51,9 @@
                 <label style="display: flex; flex-direction: column; font-size: 12px; color: #00ff41;">Phone
                     <input type="text" name="phone" style="background: #000; color: #00ff41; border: 1px solid #004400; padding: 6px;" />
                 </label>
+                <label style="display: flex; flex-direction: column; font-size: 12px; color: #00ff41;">WhatsApp
+                    <input type="text" name="whatsapp" style="background: #000; color: #00ff41; border: 1px solid #004400; padding: 6px;" />
+                </label>
                 <button type="submit" class="btn btn-primary" style="font-size: 12px;">[ CREATE ]</button>
             </form>
             <div id="create-user-msg" style="font-size: 12px; margin-top: 10px; color: #00ff41;"></div>
@@ -67,6 +70,7 @@
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Full Name</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Role</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Email</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">WhatsApp</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Active</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Last Login</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Tenant</th>
@@ -81,6 +85,7 @@
                         <td style="border:1px solid #004400;padding:6px;">{{ u.full_name or '-' }}</td>
                         <td style="border:1px solid #004400;padding:6px;">{{ u.role }}</td>
                         <td style="border:1px solid #004400;padding:6px;">{{ u.email or '-' }}</td>
+                        <td style="border:1px solid #004400;padding:6px;">{{ u.whatsapp or '-' }}</td>
                         <td style="border:1px solid #004400;padding:6px;">{{ 'Yes' if u.is_active else 'No' }}</td>
                         <td style="border:1px solid #004400;padding:6px;">{{ u.last_login or '-' }}</td>
                         <td style="border:1px solid #004400;padding:6px;" class="tenant-cell">-</td>
@@ -157,7 +162,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 role: (fd.get('role') || 'registered').toString(),
                 full_name: (fd.get('full_name') || '').toString().trim(),
                 email: (fd.get('email') || '').toString().trim(),
-                phone: (fd.get('phone') || '').toString().trim()
+                phone: (fd.get('phone') || '').toString().trim(),
+                whatsapp: (fd.get('whatsapp') || '').toString().trim()
             };
             if (!payload.username || !payload.password) {
                 showCreateMsg('Username and password required.', true);

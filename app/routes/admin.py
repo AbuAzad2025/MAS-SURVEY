@@ -96,6 +96,7 @@ def api_create_user():
     role = data.get('role') or Role.REGISTERED
     email = (data.get('email') or '').strip() or None
     phone = (data.get('phone') or '').strip() or None
+    whatsapp = (data.get('whatsapp') or '').strip() or None
     full_name = (data.get('full_name') or '').strip() or None
 
     if not username or not password:
@@ -110,7 +111,7 @@ def api_create_user():
         return jsonify({'error': 'Email already exists'}), 400
 
     user = User(
-        username=username, email=email, phone=phone,
+        username=username, email=email, phone=phone, whatsapp=whatsapp,
         role=role, full_name=full_name, is_active=True,
         created_by=session.get('user_id'),
     )

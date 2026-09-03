@@ -25,14 +25,9 @@
             <button type="submit" class="btn btn-primary" style="width: 100%;">[ LOGIN ]</button>
         </form>
         
-        <div style="margin-top: 20px; padding: 15px; background: #001a00; border: 1px solid #004400; border-radius: 5px; font-size: 12px;">
-            <strong style="color: #00ff41;">🔐 إنشاء الحسابات:</strong>
-            <div style="color: #ccc; margin-top: 8px;">
-                لا يمكن إنشاء حسابات من الخارج.<br>
-                للتواصل مع <strong style="color: #00ff41;">السوبر أدمن (مالك المنصة)</strong>:<br>
-                <strong>الاسم:</strong> أبو أزاد<br>
-                <strong>واتساب:</strong> <a href="https://wa.me/972562150193" target="_blank" style="color: #00ff41;">+972 56 215 0193</a>
-            </div>
+        <div style="margin-top: 20px; padding: 15px; background: #001a00; border: 1px solid #004400; border-radius: 5px; font-size: 12px; text-align: center;">
+            <strong style="color: #00ff41;">🔐 مشترك جديد؟</strong><br>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-primary" style="margin-top: 10px; width: 100%;">[ REGISTER + REQUEST SUBSCRIPTION | تسجيل وطلب اشتراك ]</a>
         </div>
         
         <div style="margin-top: 15px; text-align: center; font-size: 12px; color: #888;">

@@ -93,10 +93,33 @@ def _subscription_to_dict(sub) -> dict:
     def _iso(v):
         return v.isoformat() if v else None
 
+    contact = None
+    try:
+        from app.shared.models import User as _User
+        owner_user = None
+        t = getattr(sub, 'tenant', None)
+        if t is not None and getattr(t, 'owner_id', None):
+            owner_user = _User.query.get(t.owner_id)
+        elif getattr(sub, 'tenant_id', None):
+            tenant = Tenant.query.get(sub.tenant_id)
+            if tenant is not None and getattr(tenant, 'owner_id', None):
+                owner_user = _User.query.get(tenant.owner_id)
+        if owner_user is not None:
+            contact = {
+                'username': owner_user.username,
+                'full_name': owner_user.full_name,
+                'email': owner_user.email,
+                'phone': owner_user.phone,
+                'whatsapp': getattr(owner_user, 'whatsapp', None),
+            }
+    except Exception:
+        contact = None
+
     return {
         'id': sub.id,
         'tenant_id': sub.tenant_id,
         'tenant_name': tenant_name,
+        'contact': contact,
         'plan_id': sub.plan_id,
         'plan_name': plan_name,
         'price': price,

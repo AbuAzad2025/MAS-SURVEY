@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - Waiting for Approval{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 560px; margin: 40px auto;">
+    <div class="card-header" style="text-align: center;">
+        [ {{ 'ACCOUNT SUSPENDED | الحساب موقوف' if reason == 'suspended' else ('SUBSCRIPTION EXPIRED | الاشتراك منتهي' if reason == 'expired' else 'PENDING APPROVAL | بانتظار الموافقة') }} ]
+    </div>
+
+    <div class="card-body" style="font-size: 13px; color: #ccc;">
+        {% if reason == 'suspended' %}
+        <p>Your account <strong style="color:#ff4444;">{{ tenant_name }}</strong> is currently suspended. Please contact the platform owner.</p>
+        {% elif reason == 'expired' %}
+        <p>Your subscription{% if tenant_plan and tenant_plan != 'none' %} ({{ tenant_plan }}){% endif %} has <strong style="color:#ffaa00;">expired</strong>. Request a new package below or contact the owner to renew.</p>
+        {% else %}
+        <p>Welcome <strong style="color:#00ff41;">{{ tenant_name }}</strong>! Your subscription request is <strong style="color:#ffaa00;">pending owner approval</strong>. The owner will contact you after external correspondence.</p>
+        {% endif %}
+
+        {% if requests %}
+        <h4 style="color:#00ff41; margin-top: 15px;">My requests | طلباتي:</h4>
+        <table style="width:100%;border-collapse:collapse;font-size:12px; margin-top: 8px;">
+            <tr>
+                <th style="border:1px solid #004400;padding:6px;background:#001a00;color:#00ff41;">Package</th>
+                <th style="border:1px solid #004400;padding:6px;background:#001a00;color:#00ff41;">Status</th>
+                <th style="border:1px solid #004400;padding:6px;background:#001a00;color:#00ff41;">Requested</th>
+            </tr>
+            {% for r in requests %}
+            <tr>
+                <td style="border:1px solid #004400;padding:6px;">{{ r.plan_name or '-' }}</td>
+                <td style="border:1px solid #004400;padding:6px;">{{ r.status }}</td>
+                <td style="border:1px solid #004400;padding:6px;">{{ r.created_at or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+
+        <div style="margin-top: 20px; padding: 15px; background: #001a00; border: 1px solid #004400; border-radius: 5px;">
+            <strong style="color: #00ff41;">Platform owner | مالك المنصة ({{ owner.name }}):</strong><br>
+            WhatsApp: <a href="https://wa.me/{{ owner.whatsapp | replace('+', '') }}" target="_blank" style="color: #00ff41;">{{ owner.whatsapp }}</a><br>
+            <span style="color:#888;">{{ owner.note }}</span>
+        </div>
+
+        <form action="{{ url_for('auth.logout') }}" method="POST" style="margin-top: 15px; text-align: center;">
+            <button type="submit" class="btn" style="background: #1a0000; border-color: #ff4444;">[ LOGOUT ]</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

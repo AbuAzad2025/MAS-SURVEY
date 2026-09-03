@@ -16,6 +16,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True)
     phone = db.Column(db.String(20))
+    whatsapp = db.Column(db.String(30))
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), default=Role.REGISTERED, nullable=False)
     full_name = db.Column(db.String(120))
@@ -44,6 +45,7 @@ class User(db.Model):
             'username': self.username,
             'email': self.email,
             'phone': self.phone,
+            'whatsapp': self.whatsapp,
             'role': self.role,
             'full_name': self.full_name,
             'whatsapp_verified': self.whatsapp_verified,

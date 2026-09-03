@@ -53,6 +53,7 @@
                     <tr>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">ID</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Tenant</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Contact | التواصل</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Plan</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Price</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Requested</th>
@@ -61,7 +62,7 @@
                     </tr>
                 </thead>
                 <tbody id="pending-body">
-                    <tr><td colspan="7" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">Loading...</td></tr>
+                    <tr><td colspan="8" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -113,6 +114,19 @@ function statusColor(s) {
     return '#ff4444';
 }
 
+function contactCell(c) {
+    if (!c) return '-';
+    var parts = [];
+    if (c.full_name || c.username) parts.push('<strong>' + esc(c.full_name || c.username) + '</strong>');
+    if (c.whatsapp) {
+        var wa = String(c.whatsapp).replace(/[^0-9]/g, '');
+        parts.push('<a href="https://wa.me/' + esc(wa) + '" target="_blank" style="color:#00ff41;">WhatsApp: ' + esc(c.whatsapp) + '</a>');
+    }
+    if (c.phone) parts.push('Tel: ' + esc(c.phone));
+    if (c.email) parts.push(esc(c.email));
+    return parts.join('<br>') || '-';
+}
+
 async function loadPlans() {
     const sel = document.getElementById('sub-plan-id');
     try {
@@ -145,13 +159,14 @@ async function loadSubscriptions() {
         const list = Array.isArray(data) ? data : (data.subscriptions || []);
         document.getElementById('pending-count').textContent = list.length;
         if (!list.length) {
-            body.innerHTML = '<tr><td colspan="7" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">No pending subscriptions | لا توجد طلبات معلقة</td></tr>';
+            body.innerHTML = '<tr><td colspan="8" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">No pending subscriptions | لا توجد طلبات معلقة</td></tr>';
             return;
         }
         body.innerHTML = list.map(function(s) {
             return '<tr>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + esc(s.id) + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + esc(s.tenant_name || s.tenant_id) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + contactCell(s.contact) + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + esc(s.plan_name) + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + esc(s.price) + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + esc(s.created_at) + '</td>' +
@@ -162,7 +177,7 @@ async function loadSubscriptions() {
                 '</td></tr>';
         }).join('');
     } catch (e) {
-        body.innerHTML = '<tr><td colspan="7" style="border:1px solid #004400;padding:6px;text-align:center;color:#ff4444;">Failed to load | تعذر التحميل</td></tr>';
+        body.innerHTML = '<tr><td colspan="8" style="border:1px solid #004400;padding:6px;text-align:center;color:#ff4444;">Failed to load | تعذر التحميل</td></tr>';
     }
 }
 
