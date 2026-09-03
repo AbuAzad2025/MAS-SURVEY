@@ -110,7 +110,7 @@ def files_list():
         if reason == 'no_tenant':
             return _error('No tenant found', 403)
         try:
-            limits = get_plan_limits(getattr(tenant, 'plan', 'free'))
+            limits = get_plan_limits(getattr(tenant, 'plan', 'none'))
             max_files = limits.get('max_files', 5)
         except Exception:
             max_files = 5
@@ -313,7 +313,7 @@ def save_points():
     # Plan points cap: total_after = existing count + new unique point_nos
     # not already present. -1 (or negative) means unlimited.
     try:
-        limits = get_plan_limits(getattr(tenant, 'plan', 'free'))
+        limits = get_plan_limits(getattr(tenant, 'plan', 'none'))
         max_points = limits.get('max_points', 500)
     except Exception:
         max_points = 500

@@ -63,8 +63,8 @@ def app():
         db.session.flush()
 
         tenant = Tenant(
-            owner_id=admin.id, name='admin', plan='enterprise',
-            expires_at=datetime.utcnow() + timedelta(days=3650),
+            owner_id=admin.id, name='admin', plan='unlimited',
+            expires_at=None,
         )
         db.session.add(tenant)
         db.session.flush()

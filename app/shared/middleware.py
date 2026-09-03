@@ -97,24 +97,26 @@ def super_admin_required(f):
 
 # --- plan / subscription guards -------------------------------------------
 
-_FALLBACK_LIMITS = {'max_files': 5, 'max_points': 500, 'max_users': 1}
+# No tiers: every duration is unlimited. Fail-open so a missing/empty
+# plans table can never lock tenants out; tenant_block_reason still gates.
+_FALLBACK_LIMITS = {'max_files': -1, 'max_points': -1, 'max_users': -1}
 
 
 def get_plan_limits(plan_name) -> dict:
     """Return {max_files, max_points, max_users} for a plan name.
 
-    Queries Plan by name+is_active. Returns fallback
-    {'max_files': 5, 'max_points': 500, 'max_users': 1} on any error,
+    Queries Plan by name+is_active. Returns unlimited fallback
+    {'max_files': -1, 'max_points': -1, 'max_users': -1} on any error,
     missing Plan model, or plan not found. -1 means unlimited.
     """
     fallback = dict(_FALLBACK_LIMITS)
     try:
-        name = (plan_name or 'free')
+        name = (plan_name or 'none')
         # Normalize to string
         try:
-            name = str(name).strip() or 'free'
+            name = str(name).strip() or 'none'
         except Exception:
-            name = 'free'
+            name = 'none'
         Plan = None
         try:
             from .models.billing import Plan as _Plan  # type: ignore
@@ -155,10 +157,12 @@ def get_plan_limits(plan_name) -> dict:
 def tenant_block_reason(tenant):
     """Return None if tenant may proceed, else block reason.
 
+    Subscriptions are durations covering ALL platform programs:
     - None tenant -> 'no_tenant'
     - getattr(tenant, 'is_suspended', False) truthy -> 'suspended'
-    - plan name != 'free' and expires_at and expires_at < utcnow -> 'expired'
-    - free plan never expires
+    - plan == 'unlimited' -> never expires, always allowed
+    - otherwise an unexpired expires_at is required, else 'expired'
+      (covers 'none'/legacy names and lapsed weekly/monthly/yearly)
     """
     try:
         if tenant is None:
@@ -166,21 +170,21 @@ def tenant_block_reason(tenant):
         if getattr(tenant, 'is_suspended', False):
             return 'suspended'
         try:
-            raw_plan = getattr(tenant, 'plan', None) or 'free'
-            plan_name = str(raw_plan).strip().lower() or 'free'
+            raw_plan = getattr(tenant, 'plan', None) or 'none'
+            plan_name = str(raw_plan).strip().lower() or 'none'
         except Exception:
-            plan_name = 'free'
-        if plan_name == 'free':
+            plan_name = 'none'
+        if plan_name == 'unlimited':
             return None
         expires_at = getattr(tenant, 'expires_at', None)
         if expires_at is None:
-            return None
+            return 'expired'
         try:
             from datetime import datetime as _dt
             if expires_at < _dt.utcnow():
                 return 'expired'
         except Exception:
-            return None
+            return 'expired'
         return None
     except Exception:
         return None
@@ -194,7 +198,6 @@ def ensure_super_admin() -> None:
     existing = User.query.filter_by(username='admin').first()
     if existing:
         return
-    from datetime import datetime, timedelta
     user = User(
         username='admin',
         email='admin@mas-survey.local',
@@ -209,8 +212,8 @@ def ensure_super_admin() -> None:
     tenant = Tenant(
         owner_id=user.id,
         name='admin',
-        plan='enterprise',
-        expires_at=datetime.utcnow() + timedelta(days=3650),
+        plan='unlimited',
+        expires_at=None,
     )
     db.session.add(tenant)
     db.session.flush()

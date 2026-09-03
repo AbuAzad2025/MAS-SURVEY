@@ -55,20 +55,53 @@ class ActivityLog(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
+#: Subscription durations. One subscription covers ALL platform programs
+#: (MAS, INHERITANCE, ...). No tiers, no payment - manual approval only.
+#: duration_days=None means never expires. All caps are -1 (unlimited).
+DURATIONS = ('weekly', 'monthly', 'yearly', 'unlimited')
+
+#: Legacy tier names from the first version - deactivated on sight.
+LEGACY_PLANS = ('free', 'pro', 'enterprise')
+
+
 def seed_default_plans():
     defaults = [
-        dict(name='free', description='Free plan', price=0,
-             duration_days=30, max_files=5, max_points=500, max_users=1),
-        dict(name='pro', description='Pro plan', price=49,
-             duration_days=365, max_files=100, max_points=50000, max_users=5),
-        dict(name='enterprise', description='Enterprise plan', price=199,
-             duration_days=365, max_files=-1, max_points=-1, max_users=20),
+        dict(name='weekly', description='Weekly subscription - all programs',
+             price=0, duration_days=7,
+             max_files=-1, max_points=-1, max_users=-1),
+        dict(name='monthly', description='Monthly subscription - all programs',
+             price=0, duration_days=30,
+             max_files=-1, max_points=-1, max_users=-1),
+        dict(name='yearly', description='Yearly subscription - all programs',
+             price=0, duration_days=365,
+             max_files=-1, max_points=-1, max_users=-1),
+        dict(name='unlimited', description='Unlimited subscription - all programs',
+             price=0, duration_days=None,
+             max_files=-1, max_points=-1, max_users=-1),
     ]
     try:
         existing = {p.name for p in Plan.query.with_entities(Plan.name).all()}
     except Exception:
         existing = set()
     missing = [d for d in defaults if d['name'] not in existing]
-    if missing:
-        db.session.add_all([Plan(**d) for d in missing])
+    try:
+        if missing:
+            db.session.add_all([Plan(**d) for d in missing])
+            db.session.flush()
+        # Column default=30 would coerce an explicit None on INSERT;
+        # force unlimited back to NULL with an UPDATE (no defaults apply).
+        db.session.query(Plan).filter_by(name='unlimited').update(
+            {'duration_days': None}, synchronize_session=False)
+        # Retire legacy tier plans so they can no longer be assigned.
+        legacy = Plan.query.filter(Plan.name.in_(LEGACY_PLANS),
+                                   Plan.is_active.is_(True)).all()
+        for plan in legacy:
+            plan.is_active = False
+        # Migrate tenants off legacy names (enterprise -> unlimited).
+        from .tenant import Tenant
+        for tenant in Tenant.query.filter_by(plan='enterprise').all():
+            tenant.plan = 'unlimited'
+            tenant.expires_at = None
         db.session.commit()
+    except Exception:
+        db.session.rollback()

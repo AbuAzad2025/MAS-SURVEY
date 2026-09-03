@@ -23,8 +23,8 @@ class TestAdminAuth:
                      role=Role.REGISTERED, full_name='Regular User', is_active=True)
             u.set_password('password123')
             db.session.add(u); db.session.flush()
-            t = Tenant(owner_id=u.id, name='regular_user', plan='free',
-                       expires_at=datetime.utcnow() + timedelta(days=3650))
+            t = Tenant(owner_id=u.id, name='regular_user', plan='none',
+                       expires_at=None)
             db.session.add(t); db.session.flush()
             db.session.add(TenantUser(tenant_id=t.id, user_id=u.id, role='owner'))
             db.session.commit()
@@ -56,8 +56,8 @@ class TestAdminAuth:
             u = User(username='regular_user2', role=Role.REGISTERED, is_active=True)
             u.set_password('password123')
             db.session.add(u); db.session.flush()
-            t = Tenant(owner_id=u.id, name='regular_user2', plan='free',
-                       expires_at=datetime.utcnow() + timedelta(days=3650))
+            t = Tenant(owner_id=u.id, name='regular_user2', plan='none',
+                       expires_at=None)
             db.session.add(t); db.session.flush()
             db.session.add(TenantUser(tenant_id=t.id, user_id=u.id, role='owner'))
             db.session.commit()

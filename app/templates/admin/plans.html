@@ -128,7 +128,7 @@ async function loadPlans() {
                 '<td style="border:1px solid #004400;padding:6px;"><strong>' + esc(p.name) + '</strong></td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + esc(p.description) + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + esc(p.price) + '</td>' +
-                '<td style="border:1px solid #004400;padding:6px;">' + esc(p.duration_days) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + (p.duration_days === null || p.duration_days === undefined ? '∞' : esc(p.duration_days)) + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + lim(p.max_files) + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + lim(p.max_points) + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + lim(p.max_users) + '</td>' +
@@ -152,7 +152,7 @@ function editPlan(id) {
     if (description === null) return;
     const price = prompt('Price | السعر:', p.price);
     if (price === null) return;
-    const duration = prompt('Duration (days) | المدة (أيام):', p.duration_days);
+    const duration = prompt('Duration in days (empty = unlimited) | المدة بالأيام (فارغ = غير محدود):', p.duration_days === null || p.duration_days === undefined ? '' : p.duration_days);
     if (duration === null) return;
     const maxFiles = prompt('Max Files (-1 = unlimited) | أقصى ملفات:', p.max_files);
     if (maxFiles === null) return;
@@ -164,7 +164,7 @@ function editPlan(id) {
         name: name,
         description: description,
         price: parseFloat(price),
-        duration_days: parseInt(duration, 10),
+        duration_days: duration.trim() === '' ? null : parseInt(duration, 10),
         max_files: parseInt(maxFiles, 10),
         max_points: parseInt(maxPoints, 10),
         max_users: parseInt(maxUsers, 10)
@@ -186,8 +186,7 @@ function editPlan(id) {
 }
 
 async function deactivatePlan(id) {
-    if (id === 1 && !confirm('WARNING: this is the seeded FREE plan (id 1). Deactivate anyway? | تحذير: هذه الخطة المجانية الأساسية. متابعة؟')) return;
-    else if (id !== 1 && !confirm('Deactivate plan #' + id + '? | تعطيل الخطة؟')) return;
+    if (!confirm('Deactivate plan #' + id + '? | تعطيل الخطة؟')) return;
     try {
         const r = await fetch('/admin/api/plans/' + id, { method: 'DELETE' });
         const result = await r.json();
@@ -209,7 +208,7 @@ document.getElementById('plan-create-form').addEventListener('submit', async fun
         name: document.getElementById('plan-name').value,
         description: document.getElementById('plan-description').value || undefined,
         price: parseFloat(document.getElementById('plan-price').value),
-        duration_days: parseInt(document.getElementById('plan-duration').value, 10),
+        duration_days: (function() { var v = document.getElementById('plan-duration').value; return v.trim() === '' ? null : parseInt(v, 10); })(),
         max_files: parseInt(document.getElementById('plan-max-files').value, 10),
         max_points: parseInt(document.getElementById('plan-max-points').value, 10),
         max_users: parseInt(document.getElementById('plan-max-users').value, 10),

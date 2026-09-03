@@ -118,11 +118,12 @@ def api_create_user():
     db.session.add(user)
     db.session.flush()
 
-    from datetime import datetime, timedelta
+    # No subscription yet: tenant stays blocked until the owner
+    # approves one (weekly/monthly/yearly/unlimited) via /admin/subscriptions.
     from app.shared.models import Tenant, TenantUser
     tenant = Tenant(
-        owner_id=user.id, name=username, plan='free',
-        expires_at=datetime.utcnow() + timedelta(days=3650),
+        owner_id=user.id, name=username, plan='none',
+        expires_at=None,
     )
     db.session.add(tenant)
     db.session.flush()

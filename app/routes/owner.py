@@ -163,11 +163,11 @@ def _ensure_plans_seeded():
 
     The pytest session fixtures drop/recreate the schema AFTER
     create_app() has run, which wipes the seed rows. Lazy re-seeding
-    here keeps the contract (free/pro/enterprise always present).
+    here keeps the contract (weekly/monthly/yearly/unlimited present).
     """
     try:
         names = {r[0] for r in Plan.query.with_entities(Plan.name).all()}
-        if not {'free', 'pro', 'enterprise'}.issubset(names):
+        if not {'weekly', 'monthly', 'yearly', 'unlimited'}.issubset(names):
             from app.shared.models import seed_default_plans
             seed_default_plans()
     except Exception:
@@ -389,13 +389,17 @@ def api_approve_subscription(sub_id):
     if not plan:
         return jsonify({'error': 'Plan not found'}), 404
     now = datetime.utcnow()
-    duration = getattr(plan, 'duration_days', 30) or 30
-    try:
-        duration = int(duration)
-    except Exception:
-        duration = 30
-    from datetime import timedelta
-    end = now + timedelta(days=duration)
+    # duration_days=None (unlimited) -> no end date, never expires.
+    raw_duration = getattr(plan, 'duration_days', 30)
+    if raw_duration is None:
+        end = None
+    else:
+        try:
+            duration = int(raw_duration)
+        except Exception:
+            duration = 30
+        from datetime import timedelta
+        end = now + timedelta(days=duration)
     sub.status = 'active'
     sub.start_date = now
     sub.end_date = end
@@ -482,15 +486,19 @@ def api_create_plan():
     if not name:
         return jsonify({'error': 'Plan name required'}), 400
     price = data.get('price', 0)
-    duration_days = data.get('duration_days', data.get('duration', 30))
+    raw_duration = data.get('duration_days', data.get('duration', 30))
     try:
         price = float(price)
     except Exception:
         return jsonify({'error': 'Invalid price'}), 400
-    try:
-        duration_days = int(duration_days)
-    except Exception:
-        return jsonify({'error': 'Invalid duration_days'}), 400
+    # Empty/missing duration means unlimited (no expiry).
+    if raw_duration is None or (isinstance(raw_duration, str) and not raw_duration.strip()):
+        duration_days = None
+    else:
+        try:
+            duration_days = int(raw_duration)
+        except Exception:
+            return jsonify({'error': 'Invalid duration_days'}), 400
     if Plan.query.filter_by(name=name).first():
         return jsonify({'error': 'Plan name already exists'}), 400
 
@@ -506,9 +514,9 @@ def api_create_plan():
         name=name,
         price=price,
         duration_days=duration_days,
-        max_files=_int_or_default(data.get('max_files'), 5),
-        max_points=_int_or_default(data.get('max_points'), 500),
-        max_users=_int_or_default(data.get('max_users'), 1),
+        max_files=_int_or_default(data.get('max_files'), -1),
+        max_points=_int_or_default(data.get('max_points'), -1),
+        max_users=_int_or_default(data.get('max_users'), -1),
         description=data.get('description'),
     )
     if 'is_active' in data:
@@ -540,10 +548,14 @@ def api_update_plan(plan_id):
         except Exception:
             return jsonify({'error': 'Invalid price'}), 400
     if 'duration_days' in data:
-        try:
-            plan.duration_days = int(data.get('duration_days'))
-        except Exception:
-            return jsonify({'error': 'Invalid duration_days'}), 400
+        raw = data.get('duration_days')
+        if raw is None or (isinstance(raw, str) and not raw.strip()):
+            plan.duration_days = None
+        else:
+            try:
+                plan.duration_days = int(raw)
+            except Exception:
+                return jsonify({'error': 'Invalid duration_days'}), 400
     for field in ('max_files', 'max_points', 'max_users'):
         if field in data:
             try:

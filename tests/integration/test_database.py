@@ -21,8 +21,8 @@ def _make_tenant(app):
         u.set_password("pw12345")
         db.session.add(u)
         db.session.flush()
-        t = Tenant(owner_id=u.id, name=f"tenant_{tag}", plan="free",
-                   expires_at=datetime.utcnow() + timedelta(days=3650))
+        t = Tenant(owner_id=u.id, name=f"tenant_{tag}", plan="unlimited",
+                   expires_at=None)
         db.session.add(t)
         db.session.flush()
         db.session.add(TenantUser(tenant_id=t.id, user_id=u.id, role="owner"))

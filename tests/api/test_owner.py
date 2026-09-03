@@ -116,12 +116,12 @@ def _plans_list(client):
     return data
 
 
-def _get_pro_plan_id(client):
+def _get_monthly_plan_id(client):
     plans = _plans_list(client)
     for p in plans:
-        if str(p.get("name", "")).lower() == "pro":
+        if str(p.get("name", "")).lower() == "monthly":
             return p["id"]
-    pytest.fail(f"'pro' plan not seeded; plans={plans}")
+    pytest.fail(f"'monthly' plan not seeded; plans={plans}")
 
 
 def _create_user(client, username, password="password123", role="registered"):
@@ -336,17 +336,17 @@ class TestOwnerSubscriptions:
         uname = _uniq(prefix)
         _create_user(client, uname)
         tid = _tenant_id_for_user(client, app, uname)
-        pro_id = _get_pro_plan_id(client)
+        monthly_id = _get_monthly_plan_id(client)
         r = client.post("/admin/api/subscriptions",
-                        json={"tenant_id": tid, "plan_id": pro_id})
+                        json={"tenant_id": tid, "plan_id": monthly_id})
         if r.status_code == 404 and _is_no_route(r):
             pytest.xfail("contract gap: POST /admin/api/subscriptions missing")
         assert r.status_code == 200, f"create sub: {r.status_code} {r.data[:400]}"
         sid = _extract_sub_id(r.get_json())
-        return uname, tid, pro_id, sid
+        return uname, tid, monthly_id, sid
 
     def test_create_pending(self, client, app, super_admin_user):
-        uname, tid, pro_id, sid = self._new_tenant_with_pending(
+        uname, tid, monthly_id, sid = self._new_tenant_with_pending(
             client, app, super_admin_user, "ownsub")
         assert isinstance(sid, int)
         try:
@@ -357,7 +357,7 @@ class TestOwnerSubscriptions:
             _login_admin(client, super_admin_user)
 
     def test_approve_sets_active_and_updates_plan(self, client, app, super_admin_user):
-        uname, tid, pro_id, sid = self._new_tenant_with_pending(
+        uname, tid, monthly_id, sid = self._new_tenant_with_pending(
             client, app, super_admin_user, "ownappr")
         try:
             r = _approve(client, sid)
@@ -369,21 +369,21 @@ class TestOwnerSubscriptions:
             assert d.status_code == 200, f"tenant detail: {d.status_code} {d.data[:300]}"
             tenant = d.get_json().get("tenant", {})
             plan_val = tenant.get("plan")
-            # plan may be name or nested object; accept 'pro' in any form
-            assert "pro" in str(plan_val).lower(), \
-                f"tenant.plan not updated to pro: {tenant}"
+            # plan may be name or nested object; accept 'monthly' in any form
+            assert "monthly" in str(plan_val).lower(), \
+                f"tenant.plan not updated to monthly: {tenant}"
         finally:
             _login_admin(client, super_admin_user)
 
     def test_reject_second_request_cancels(self, client, app, super_admin_user):
-        uname, tid, pro_id, sid = self._new_tenant_with_pending(
+        uname, tid, monthly_id, sid = self._new_tenant_with_pending(
             client, app, super_admin_user, "ownrej")
         try:
             # approve first so we can file a distinct second request
             r = _approve(client, sid)
             assert r.status_code == 200, f"approve(1st): {r.status_code} {r.data[:300]}"
             r2 = client.post("/admin/api/subscriptions",
-                             json={"tenant_id": tid, "plan_id": pro_id})
+                             json={"tenant_id": tid, "plan_id": monthly_id})
             if r2.status_code == 404 and _is_no_route(r2):
                 pytest.xfail("contract gap: POST /admin/api/subscriptions missing")
             assert r2.status_code == 200, f"2nd request: {r2.status_code} {r2.data[:400]}"
@@ -402,12 +402,40 @@ class TestOwnerSubscriptions:
         finally:
             _login_admin(client, super_admin_user)
 
+    def test_approve_unlimited_has_no_expiry(self, client, app, super_admin_user):
+        """Approving 'unlimited' sets no end date and unblocks the tenant."""
+        _login_admin(client, super_admin_user)
+        uname = _uniq("ownunl")
+        _create_user(client, uname)
+        tid = _tenant_id_for_user(client, app, uname)
+        plans = _plans_list(client)
+        unlimited_id = None
+        for p in plans:
+            if str(p.get("name", "")).lower() == "unlimited":
+                unlimited_id = p["id"]
+        assert unlimited_id is not None, f"'unlimited' plan missing: {plans}"
+        try:
+            r = client.post("/admin/api/subscriptions",
+                            json={"tenant_id": tid, "plan_id": unlimited_id})
+            assert r.status_code == 200, f"create sub: {r.status_code} {r.data[:400]}"
+            sid = _extract_sub_id(r.get_json())
+            r = _approve(client, sid)
+            assert r.status_code == 200, f"approve: {r.status_code} {r.data[:400]}"
+            d = client.get(f"/admin/api/tenants/{tid}")
+            assert d.status_code == 200
+            tenant = d.get_json().get("tenant", {})
+            assert str(tenant.get("plan", "")).lower() == "unlimited"
+            assert tenant.get("expires_at") in (None, ""), \
+                f"unlimited must have no expiry: {tenant}"
+        finally:
+            _login_admin(client, super_admin_user)
+
     def test_duplicate_pending_returns_400(self, client, app, super_admin_user):
-        uname, tid, pro_id, sid = self._new_tenant_with_pending(
+        uname, tid, monthly_id, sid = self._new_tenant_with_pending(
             client, app, super_admin_user, "owndup")
         try:
             r = client.post("/admin/api/subscriptions",
-                            json={"tenant_id": tid, "plan_id": pro_id})
+                            json={"tenant_id": tid, "plan_id": monthly_id})
             if r.status_code == 404 and _is_no_route(r):
                 pytest.xfail("contract gap: POST /admin/api/subscriptions missing")
             assert r.status_code == 400, \
@@ -422,7 +450,7 @@ class TestOwnerPlans:
     def test_list_has_seeded_plans(self, client):
         plans = _plans_list(client)
         names = {str(p.get("name", "")).lower() for p in plans}
-        for expected in ("free", "pro", "enterprise"):
+        for expected in ("weekly", "monthly", "yearly", "unlimited"):
             assert expected in names, f"seeded plan '{expected}' missing: {names}"
 
     def test_create_update_deactivate(self, client, super_admin_user):
@@ -495,20 +523,20 @@ class TestOwnerPlans:
 # --- TestOwnerRequest -------------------------------------------------------------
 
 class TestOwnerRequest:
-    def test_regular_user_can_request_pro_plan(self, client, app, super_admin_user):
+    def test_regular_user_can_request_monthly_plan(self, client, app, super_admin_user):
         _login_admin(client, super_admin_user)
         uname = _uniq("ownreq")
         pwd = "password123"
         _create_user(client, uname, password=pwd)
         tid = _tenant_id_for_user(client, app, uname)
-        pro_id = _get_pro_plan_id(client)
+        monthly_id = _get_monthly_plan_id(client)
         try:
             # act as the regular user
             client.post("/auth/logout")
             lr = client.post("/auth/login", json={"username": uname, "password": pwd})
             assert lr.status_code == 200, f"user login: {lr.status_code} {lr.data[:200]}"
 
-            r = client.post("/admin/api/subscriptions/request", json={"plan_id": pro_id})
+            r = client.post("/admin/api/subscriptions/request", json={"plan_id": monthly_id})
             if r.status_code == 404 and _is_no_route(r):
                 pytest.xfail("contract gap: POST /admin/api/subscriptions/request missing")
             assert r.status_code in (200, 201), \

@@ -34,8 +34,8 @@ class TestAuthLogin:
                      role=Role.REGISTERED, full_name='Registered User', is_active=True)
             u.set_password('password123')
             db.session.add(u); db.session.flush()
-            t = Tenant(owner_id=u.id, name=username, plan='free',
-                       expires_at=datetime.utcnow() + timedelta(days=3650))
+            t = Tenant(owner_id=u.id, name=username, plan='none',
+                       expires_at=None)
             db.session.add(t); db.session.flush()
             db.session.add(TenantUser(tenant_id=t.id, user_id=u.id, role='owner'))
             db.session.commit()
@@ -58,8 +58,8 @@ class TestAuthLogin:
                      role=Role.GUEST, full_name='Guest User', is_active=True)
             u.set_password('password123')
             db.session.add(u); db.session.flush()
-            t = Tenant(owner_id=u.id, name=username, plan='free',
-                       expires_at=datetime.utcnow() + timedelta(days=3650))
+            t = Tenant(owner_id=u.id, name=username, plan='none',
+                       expires_at=None)
             db.session.add(t); db.session.flush()
             db.session.add(TenantUser(tenant_id=t.id, user_id=u.id, role='owner'))
             db.session.commit()
@@ -233,8 +233,8 @@ class TestAuthSessionPersistence:
                          role=Role.REGISTERED, is_active=True)
                 u.set_password('pass123')
                 db.session.add(u); db.session.flush()
-                t = Tenant(owner_id=u.id, name=username, plan='free',
-                           expires_at=datetime.utcnow() + timedelta(days=3650))
+                t = Tenant(owner_id=u.id, name=username, plan='none',
+                           expires_at=None)
                 db.session.add(t); db.session.flush()
                 db.session.add(TenantUser(tenant_id=t.id, user_id=u.id, role='owner'))
             db.session.commit()

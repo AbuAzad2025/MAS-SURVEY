@@ -54,7 +54,7 @@ def new_file():
             return render_template('error.html', message='No tenant found')
 
         try:
-            limits = get_plan_limits(getattr(tenant, 'plan', 'free'))
+            limits = get_plan_limits(getattr(tenant, 'plan', 'none'))
             max_files = limits.get('max_files', 5)
         except Exception:
             max_files = 5

@@ -13,7 +13,9 @@ class Tenant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     name = db.Column(db.String(120), nullable=False)
-    plan = db.Column(db.String(20), default='free')  # free/pro/enterprise
+    # Subscription duration: weekly/monthly/yearly/unlimited (platform-wide).
+    # 'none' = no subscription yet (blocked until owner approves one).
+    plan = db.Column(db.String(20), default='none')
     is_suspended = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime)
