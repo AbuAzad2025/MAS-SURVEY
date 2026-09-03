@@ -11,17 +11,24 @@ from typing import Dict, List, Any
 class TestAdminAuth:
     """Test admin authentication and authorization."""
 
-    def test_admin_dashboard_requires_super_admin(self, client):
+    def test_admin_dashboard_requires_super_admin(self, client, app):
         """Test admin dashboard requires super_admin role."""
         # Login as regular user first
-        from app.shared.models import User
-        from app import create_app
-        
+        from app.shared.models import db, User, Role, Tenant, TenantUser
+        from datetime import datetime, timedelta
+
         # Create a regular user
-        db = client.application.config['DATABASE']
-        User.create(db, 'regular_user', 'password123', 'registered', 
-                   email='regular@test.com', full_name='Regular User')
-        
+        with app.app_context():
+            u = User(username='regular_user', email='regular@test.com',
+                     role=Role.REGISTERED, full_name='Regular User', is_active=True)
+            u.set_password('password123')
+            db.session.add(u); db.session.flush()
+            t = Tenant(owner_id=u.id, name='regular_user', plan='free',
+                       expires_at=datetime.utcnow() + timedelta(days=3650))
+            db.session.add(t); db.session.flush()
+            db.session.add(TenantUser(tenant_id=t.id, user_id=u.id, role='owner'))
+            db.session.commit()
+
         client.post('/auth/login', json={'username': 'regular_user', 'password': 'password123'})
         
         # Try to access admin dashboard
@@ -35,15 +42,25 @@ class TestAdminAuth:
         response = client.get('/admin/')
         assert response.status_code == 200
 
-    def test_admin_api_requires_super_admin(self, client):
+    def test_admin_api_requires_super_admin(self, client, app):
         """Test admin API endpoints require super_admin role."""
+        # Autouse fixture logs in as admin; log out to test anonymous access.
+        client.post('/auth/logout')
         response = client.get('/admin/api/users')
         assert response.status_code == 401  # Not logged in
-        
+
         # Login as regular user
-        from app.shared.models import User
-        db = client.application.config['DATABASE']
-        User.create(db, 'regular_user2', 'password123', 'registered')
+        from app.shared.models import db, User, Role, Tenant, TenantUser
+        from datetime import datetime, timedelta
+        with app.app_context():
+            u = User(username='regular_user2', role=Role.REGISTERED, is_active=True)
+            u.set_password('password123')
+            db.session.add(u); db.session.flush()
+            t = Tenant(owner_id=u.id, name='regular_user2', plan='free',
+                       expires_at=datetime.utcnow() + timedelta(days=3650))
+            db.session.add(t); db.session.flush()
+            db.session.add(TenantUser(tenant_id=t.id, user_id=u.id, role='owner'))
+            db.session.commit()
         client.post('/auth/login', json={'username': 'regular_user2', 'password': 'password123'})
         
         response = client.get('/admin/api/users')
@@ -235,7 +252,7 @@ class TestAdminUsersAPI:
         assert response.status_code == 400
         assert 'Cannot delete yourself' in response.get_json()['error']
 
-    def test_reset_password(self, client):
+    def test_reset_password(self, client, app):
         """Test resetting user password."""
         username = f'reset_pwd_{int(time.time())}'
         create_resp = client.post('/admin/api/users', json={
@@ -254,9 +271,10 @@ class TestAdminUsersAPI:
         
         # Verify new password works
         from app.shared.models import User
-        db = client.application.config['DATABASE']
-        auth_user = User.authenticate(db, username, 'new_password123')
-        assert auth_user is not None
+        with app.app_context():
+            auth_user = User.query.filter_by(username=username).first()
+            assert auth_user is not None
+            assert auth_user.check_password('new_password123')
 
     def test_reset_password_short(self, client):
         """Test resetting password with too short password fails."""

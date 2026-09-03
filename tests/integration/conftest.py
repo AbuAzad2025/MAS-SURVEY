@@ -50,25 +50,52 @@ def client(app):
 
 
 @pytest.fixture(scope='function')
-def db_with_file(temp_db):
-    """Initialize database with a test file."""
-    from app.shared.models import init_db, SurveyFile, SurveyPoint
+def db_with_file(app):
+    """Initialize database with a test file (ORM, isolated tenant)."""
+    import uuid
+    from datetime import datetime, timedelta
+    from app.shared.models import db, User, Role, Tenant, TenantUser, SurveyFile, SurveyPoint
 
-    init_db(temp_db)
+    tag = f"dbwf_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
+    with app.app_context():
+        u = User(username=f"u_{tag}", role=Role.REGISTERED, is_active=True)
+        u.set_password("pw12345")
+        db.session.add(u)
+        db.session.flush()
+        t = Tenant(owner_id=u.id, name=f"t_{tag}", plan="free",
+                   expires_at=datetime.utcnow() + timedelta(days=3650))
+        db.session.add(t)
+        db.session.flush()
+        db.session.add(TenantUser(tenant_id=t.id, user_id=u.id, role="owner"))
+        file_name = f'test_file_{tag}'
+        f = SurveyFile(tenant_id=t.id, name=file_name,
+                       date='2026-08-31', place='Test Location')
+        db.session.add(f)
+        db.session.flush()
+        points = [
+            {'no': 1, 'y': 1000.0, 'x': 2000.0, 'h': 50.0},
+            {'no': 2, 'y': 1100.0, 'x': 2000.0, 'h': 55.0},
+            {'no': 3, 'y': 1100.0, 'x': 2100.0, 'h': 60.0},
+        ]
+        for p in points:
+            db.session.add(SurveyPoint(tenant_id=t.id, file_id=f.id,
+                                       point_no=p['no'], y=p['y'], x=p['x'], h=p['h']))
+        f.no_of_points = len(points)
+        db.session.commit()
+        ids = (u.id, t.id, f.id)
 
-    file_name = f'test_file_{int(time.time())}'
-    SurveyFile.create(temp_db, file_name, '2026-08-31', 'Test Location')
+    yield {'tenant_id': ids[1], 'file': file_name, 'file_id': ids[2], 'points': points}
 
-    points = [
-        {'no': 1, 'y': 1000.0, 'x': 2000.0, 'h': 50.0},
-        {'no': 2, 'y': 1100.0, 'x': 2000.0, 'h': 55.0},
-        {'no': 3, 'y': 1100.0, 'x': 2100.0, 'h': 60.0},
-    ]
-    SurveyPoint.save_batch(temp_db, file_name, points)
-
-    yield {'db': temp_db, 'file': file_name, 'points': points}
-
-    SurveyFile.delete(temp_db, file_name)
+    with app.app_context():
+        for ff in SurveyFile.query.filter_by(tenant_id=ids[1]).all():
+            db.session.delete(ff)
+        tt = Tenant.query.get(ids[1])
+        if tt:
+            db.session.delete(tt)
+        uu = User.query.get(ids[0])
+        if uu:
+            db.session.delete(uu)
+        db.session.commit()
 
 
 @pytest.fixture(autouse=True)

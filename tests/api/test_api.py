@@ -480,7 +480,7 @@ class TestAPIPrint:
     def test_print_draw_no_heights(self, client):
         """Test print draw without heights returns error JSON."""
         with client.session_transaction() as sess:
-            sess.clear()
+            sess.pop('current_file', None)
         name = f'test_no_heights_{int(time.time())}'
         client.post('/api/files', json={'name': name, 'date': '2026-08-31', 'place': 'Test'})
         client.post('/api/set-file', json={'filename': name})
@@ -506,7 +506,7 @@ class TestAPIPrint:
     def test_print_gridlimits_empty_file(self, client):
         """Test print grid limits with file but no points."""
         with client.session_transaction() as sess:
-            sess.clear()
+            sess.pop('current_file', None)
         name = f'test_empty_{int(time.time())}'
         client.post('/api/files', json={'name': name, 'date': '2026-08-31', 'place': 'Test'})
         client.post('/api/set-file', json={'filename': name})
