@@ -7,18 +7,86 @@ on:
     branches: [main, master, develop]
   workflow_dispatch:
 
-jobs:
-  test:
-    name: Test (unit + api + routes + cli + integration + e2e)
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
 
+env:
+  PYTHON_VERSION: '3.14'
+  DB_USER: postgres
+  DB_PASSWORD: '123'
+  DB_NAME: mas_survey_test
+
+# ---------------------------------------------------------------------------
+# Jobs run in this order:
+#   1. lint         - syntax, compileall, naming
+#   2. unit         - fast isolated unit tests (test_calculator)
+#   3. backend      - full Flask + DB integration (api/routes/cli/integration)
+#   4. frontend     - CSS/JS template coverage report
+#   5. e2e          - Playwright in a real Chromium
+#   6. coverage     - aggregate coverage and upload artifact
+#
+# All jobs post a single named step as a job-summary line so the
+# Actions UI surfaces pass/fail per phase at a glance.
+# ---------------------------------------------------------------------------
+
+jobs:
+  lint:
+    name: Lint (compile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Syntax check
+        run: |
+          python -m compileall -q app/ tests/ config.py run.py
+      - name: Import sanity
+        run: |
+          python -c "from app import create_app; a = create_app('testing'); print('factory ok')"
+      - name: Report
+        if: always()
+        run: |
+          echo "## lint" >> $GITHUB_STEP_SUMMARY
+          echo "- compile: ${{ steps.syntax-check.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "- import:  ${{ steps.import-sanity.outcome }}" >> $GITHUB_STEP_SUMMARY
+
+  unit:
+    name: Unit (calculator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Unit tests
+        run: |
+          pytest tests/test_calculator.py -q -p no:cacheprovider --no-cov
+      - name: Report
+        if: always()
+        run: |
+          echo "## unit" >> $GITHUB_STEP_SUMMARY
+          echo "- pytest: ${{ steps.unit-tests.outcome }}" >> $GITHUB_STEP_SUMMARY
+
+  backend:
+    name: Backend (api + routes + cli + integration)
+    runs-on: ubuntu-latest
+    needs: lint
     services:
       postgres:
         image: postgres:18
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: 123
-          POSTGRES_DB: mas_survey_test
+          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+          POSTGRES_DB: ${{ env.DB_NAME }}
         ports:
           - 5432:5432
         options: >-
@@ -26,28 +94,197 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
-
-      - name: Install dependencies
-        run: |
+      - run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Backend tests
+        env:
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+        run: |
+          mkdir -p artifacts
+          pytest tests/api tests/routes tests/cli tests/integration \
+                 --tb=short -p no:cacheprovider \
+                 --junitxml=artifacts/backend-junit.xml
+      - name: Upload backend report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-report
+          path: artifacts/backend-junit.xml
+          retention-days: 7
+      - name: Report
+        if: always()
+        run: |
+          echo "## backend" >> $GITHUB_STEP_SUMMARY
+          echo "- pytest: ${{ steps.backend-tests.outcome }}" >> $GITHUB_STEP_SUMMARY
+          if [ -f artifacts/backend-junit.xml ]; then
+            pass=$(grep -oE 'tests="[0-9]+" .* failures="[0-9]+"' artifacts/backend-junit.xml | head -1)
+            echo "- summary: $pass" >> $GITHUB_STEP_SUMMARY
+          fi
 
+  frontend:
+    name: Frontend (CSS/JS + templates)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static inventory
+        run: |
+          mkdir -p artifacts
+          {
+            echo "# Frontend inventory"
+            echo
+            echo "## HTML templates"
+            find app/templates -name "*.html" -printf "| %p | %s bytes |\n" 2>/dev/null
+            echo
+            echo "## CSS"
+            find app/static/css -name "*.css" -printf "| %p | %s bytes |\n" 2>/dev/null
+            echo
+            echo "## JavaScript"
+            find app/static/js -name "*.js" -printf "| %p | %s bytes |\n" 2>/dev/null
+            echo
+            echo "## Jinja url_for endpoints"
+            grep -hRhoE "url_for\('[a-z_]+'\)" app/templates/ 2>/dev/null | sort -u
+            echo
+            echo "## API routes referenced by templates/JS"
+            grep -hRhoE "fetch\(['\"]/[a-zA-Z0-9_/{}]+['\"]" app/templates/ app/static/ 2>/dev/null \
+              | sort -u | head -40
+          } > artifacts/frontend-inventory.md
+      - name: Upload frontend inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-inventory
+          path: artifacts/frontend-inventory.md
+          retention-days: 7
+      - name: Report
+        if: always()
+        run: |
+          html=$(find app/templates -name '*.html' 2>/dev/null | wc -l)
+          css=$(find app/static/css -name '*.css' 2>/dev/null | wc -l)
+          js=$(find app/static/js -name '*.js' 2>/dev/null | wc -l)
+          echo "## frontend" >> $GITHUB_STEP_SUMMARY
+          echo "- HTML templates: $html" >> $GITHUB_STEP_SUMMARY
+          echo "- CSS files:      $css" >> $GITHUB_STEP_SUMMARY
+          echo "- JS files:       $js" >> $GITHUB_STEP_SUMMARY
+          echo "- inventory:      ${{ steps.static-inventory.outcome }}" >> $GITHUB_STEP_SUMMARY
+
+  e2e:
+    name: E2E (Playwright + Chromium)
+    runs-on: ubuntu-latest
+    needs: [lint, unit, backend]
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+          POSTGRES_DB: ${{ env.DB_NAME }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
       - name: Install Playwright browser
         run: |
           playwright install chromium --with-deps || python -m playwright install chromium
-
-      - name: Run full test suite
+      - name: E2E tests
         env:
-          DB_PASSWORD: 123
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
         run: |
-          pytest tests/ --tb=short -p no:cacheprovider --no-cov
+          mkdir -p artifacts
+          pytest tests/e2e --tb=short -p no:cacheprovider --no-cov \
+                 --junitxml=artifacts/e2e-junit.xml
+      - name: Upload e2e report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: artifacts/e2e-junit.xml
+          retention-days: 7
+      - name: Report
+        if: always()
+        run: |
+          echo "## e2e" >> $GITHUB_STEP_SUMMARY
+          echo "- pytest: ${{ steps.e2e-tests.outcome }}" >> $GITHUB_STEP_SUMMARY
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    needs: [lint, unit, backend, e2e]
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+          POSTGRES_DB: ${{ env.DB_NAME }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Full coverage
+        env:
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+        run: |
+          mkdir -p artifacts
+          pytest tests/ --tb=short -p no:cacheprovider \
+                 --cov=app --cov-report=xml:artifacts/coverage.xml \
+                 --cov-report=html:artifacts/coverage-html \
+                 --cov-report=json:artifacts/coverage.json
+      - name: Coverage summary
+        if: always()
+        run: |
+          python -c "
+import json, sys
+try:
+  d = json.load(open('artifacts/coverage.json'))
+  t = d['totals']
+  print(f\"TOTAL  {t['percent_covered_display']}  ({t['covered_lines']}/{t['num_statements']} lines)\")
+  for f in sorted(d['files'], key=lambda x: x['summary']['percent_covered']):
+      s = f['summary']
+      if s['num_statements'] == 0: continue
+      print(f\"  {s['percent_covered_display']:>6}  {f['filename']}\")
+except Exception as e:
+  print('no coverage', e)
+" | tee artifacts/coverage-summary.txt
+          echo "## coverage" >> $GITHUB_STEP_SUMMARY
+          echo "- run:  ${{ steps.full-coverage.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          head -40 artifacts/coverage-summary.txt >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: artifacts/
+          retention-days: 14
