@@ -7,14 +7,6 @@
     <div class="card-header">[ C I R C L E ]</div>
     
     <div class="card-body">
-        <div class="guidance-box" style="background:#1a1a2e;border:1px solid #00ff41;padding:10px;border-radius:5px;margin-bottom:15px;">
-            <strong style="color:#00ff41;">📍 المدخلات:</strong>
-            <span style="color:#ccc;"> نوع الحساب | القيمة1 (زاوية/نصف قطر) | القيمة2 (اختياري)</span>
-            <br>
-            <strong style="color:#00ff41;">📤 المخرجات:</strong>
-            <span style="color:#ccc;"> النتيجة (م أو م²)</span>
-        </div>
-
         <div class="menu-grid" style="grid-template-columns: repeat(3, 1fr);">
             <a href="#" onclick="showCircleOption(1)" class="menu-item">
                 <div class="text">1- ARC</div>
@@ -41,12 +33,54 @@
             
             <div id="circle-fields">
                 <div class="form-group" id="value1-group">
-                    <label id="value1-label">Radius:</label>
-                    <input type="number" id="circle-value1" class="form-control" step="0.001">
+                    <label id="value1-label">Value 1:</label>
+                    <input type="number" id="circle-value1" class="form-control" step="0.001" min="0.001" max="99999.999"
+                           placeholder="أدخل القيمة الأولى">
                 </div>
                 <div class="form-group" id="value2-group" style="display: none;">
                     <label id="value2-label">Value 2:</label>
-                    <input type="number" id="circle-value2" class="form-control" step="0.001">
+                    <input type="number" id="circle-value2" class="form-control" step="0.001" min="0.001" max="99999.999"
+                           placeholder="أدخل القيمة الثانية (اختياري)">
+                </div>
+                <div id="center-points-section" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                        <div class="form-group">
+                            <label>P1 Y:</label>
+                            <input type="number" id="p1-y" class="form-control" step="0.001"
+                                   placeholder="إحداثي Y للنقطة 1"
+                                   title="إحداثي Y للنقطة الأولى على المحيط">
+                        </div>
+                        <div class="form-group">
+                            <label>P1 X:</label>
+                            <input type="number" id="p1-x" class="form-control" step="0.001"
+                                   placeholder="إحداثي X للنقطة 1"
+                                   title="إحداثي X للنقطة الأولى على المحيط">
+                        </div>
+                        <div class="form-group">
+                            <label>P2 Y:</label>
+                            <input type="number" id="p2-y" class="form-control" step="0.001"
+                                   placeholder="إحداثي Y للنقطة 2"
+                                   title="إحداثي Y للنقطة الثانية على المحيط">
+                        </div>
+                        <div class="form-group">
+                            <label>P2 X:</label>
+                            <input type="number" id="p2-x" class="form-control" step="0.001"
+                                   placeholder="إحداثي X للنقطة 2"
+                                   title="إحداثي X للنقطة الثانية على المحيط">
+                        </div>
+                        <div class="form-group">
+                            <label>P3 Y:</label>
+                            <input type="number" id="p3-y" class="form-control" step="0.001"
+                                   placeholder="إحداثي Y للنقطة 3"
+                                   title="إحداثي Y للنقطة الثالثة على المحيط">
+                        </div>
+                        <div class="form-group">
+                            <label>P3 X:</label>
+                            <input type="number" id="p3-x" class="form-control" step="0.001"
+                                   placeholder="إحداثي X للنقطة 3"
+                                   title="إحداثي X للنقطة الثالثة على المحيط">
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -58,6 +92,11 @@
                 <span class="info-label">RESULT = </span>
                 <span id="circle-result-value" style="color: var(--text-highlight); font-size: 18px;">0.000</span>
                 <span id="circle-result-unit" class="info-label">m</span>
+            </div>
+            <div id="circle-center-result" style="display: none; margin-top: 10px;">
+                <div>Y = <span id="center-y" style="color: var(--text-highlight);">0.000</span></div>
+                <div>X = <span id="center-x" style="color: var(--text-highlight);">0.000</span></div>
+                <div>Radius = <span id="radius-value" style="color: var(--text-secondary);">0.000</span></div>
             </div>
         </div>
         
@@ -77,19 +116,21 @@ function showCircleOption(option) {
     document.getElementById('circle-input').style.display = 'block';
     document.getElementById('circle-result').style.display = 'none';
     document.getElementById('value2-group').style.display = 'none';
+    document.getElementById('center-points-section').style.display = 'none';
     
     const config = {
-        1: { title: 'ARC LENGTH', label1: 'Angle (grads):', label2: 'Radius:', show2: true, unit: 'm', apiType: 'ARC' },
-        2: { title: 'CIRCUMFERENCE', label1: 'Radius:', label2: '', show2: false, unit: 'm', apiType: 'CIRCUMFERENCE' },
-        3: { title: 'CIRCLE AREA', label1: 'Radius:', label2: '', show2: false, unit: 'm2', apiType: 'AREA' },
-        4: { title: 'CENTER COORDINATES', label1: 'Point 1 Y:', label2: 'Point 1 X:', show2: true, unit: '', apiType: 'CENTER' },
-        5: { title: 'RADIUS', label1: 'Circumference:', label2: '', show2: false, unit: 'm', apiType: 'RADIUS' },
-        6: { title: 'CHORD LENGTH', label1: 'Radius:', label2: 'Angle (grads):', show2: true, unit: 'm', apiType: 'CHORD' }
+        1: { title: 'ARC LENGTH', label1: 'Angle (grads):', label2: 'Radius:', show2: true, unit: 'm' },
+        2: { title: 'CIRCUMFERENCE', label1: 'Radius:', label2: '', show2: false, unit: 'm' },
+        3: { title: 'CIRCLE AREA', label1: 'Radius:', label2: '', show2: false, unit: 'm2' },
+        4: { title: 'CENTER COORDINATES', label1: '3 Points on Circumference', label2: '', show2: false, unit: '' },
+        5: { title: 'RADIUS', label1: 'Circumference:', label2: '', show2: false, unit: 'm' },
+        6: { title: 'CHORD LENGTH', label1: 'Radius:', label2: 'Angle (grads):', show2: true, unit: 'm' }
     };
     
     const c = config[option];
     document.getElementById('circle-title').textContent = c.title;
     document.getElementById('value1-label').textContent = c.label1;
+    document.getElementById('value1-group').style.display = option === 4 ? 'none' : 'block';
     document.getElementById('circle-value1').value = '';
     document.getElementById('circle-value2').value = '';
     
@@ -97,39 +138,65 @@ function showCircleOption(option) {
         document.getElementById('value2-group').style.display = 'block';
         document.getElementById('value2-label').textContent = c.label2;
     }
+    
+    if (option === 4) {
+        document.getElementById('center-points-section').style.display = 'block';
+    }
 }
 
 async function calculateCircle() {
     const v1 = parseFloat(document.getElementById('circle-value1').value) || 0;
     const v2 = parseFloat(document.getElementById('circle-value2').value) || 0;
     
-    const config = {
-        1: { apiType: 'ARC', unit: 'm' },
-        2: { apiType: 'CIRCUMFERENCE', unit: 'm' },
-        3: { apiType: 'AREA', unit: 'm²' },
-        4: { apiType: 'CENTER', unit: '' },
-        5: { apiType: 'RADIUS', unit: 'm' },
-        6: { apiType: 'CHORD', unit: 'm' }
+    let requestBody = {
+        type: ['ARC', 'CIRCUMFERENCE', 'AREA', 'CENTER', 'RADIUS', 'CHORD'][currentCircleOption - 1],
+        value1: v1,
+        value2: v2
     };
+    
+    if (currentCircleOption === 4) {
+        requestBody.p1 = {
+            y: parseFloat(document.getElementById('p1-y').value) || 0,
+            x: parseFloat(document.getElementById('p1-x').value) || 0
+        };
+        requestBody.p2 = {
+            y: parseFloat(document.getElementById('p2-y').value) || 0,
+            x: parseFloat(document.getElementById('p2-x').value) || 0
+        };
+        requestBody.p3 = {
+            y: parseFloat(document.getElementById('p3-y').value) || 0,
+            x: parseFloat(document.getElementById('p3-x').value) || 0
+        };
+    }
     
     try {
         const response = await fetch('/calculate/circle', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                type: config[currentCircleOption].apiType,
-                value1: v1,
-                value2: v2
-            })
+            body: JSON.stringify(requestBody)
         });
         
-        if (!response.ok) throw new Error('Calculation failed');
+        if (!response.ok) {
+            const err = await response.json();
+            MAS.showAlert(err.error || 'Circle calculation failed', 'error');
+            return;
+        }
         
         const result = await response.json();
         
-        document.getElementById('circle-result-value').textContent = result.result.toFixed(3);
-        document.getElementById('circle-result-unit').textContent = result.unit;
-        document.getElementById('circle-result').style.display = 'block';
+        if (result.center) {
+            document.getElementById('circle-result').style.display = 'none';
+            document.getElementById('circle-center-result').style.display = 'block';
+            document.getElementById('center-y').textContent = result.center.y.toFixed(3);
+            document.getElementById('center-x').textContent = result.center.x.toFixed(3);
+            document.getElementById('radius-value').textContent = result.radius.toFixed(3);
+        } else {
+            document.getElementById('circle-center-result').style.display = 'none';
+            document.getElementById('circle-result-value').textContent = result.result.toFixed(3);
+            document.getElementById('circle-result-unit').textContent = result.unit || '';
+            document.getElementById('circle-result').style.display = 'block';
+        }
+        
     } catch (error) {
         MAS.showAlert('Error: ' + error.message, 'error');
     }

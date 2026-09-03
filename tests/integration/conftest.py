@@ -71,6 +71,16 @@ def db_with_file(temp_db):
     SurveyFile.delete(temp_db, file_name)
 
 
+@pytest.fixture(autouse=True)
+def login_for_protected_pages(client, super_admin_user):
+    """MAS pages require login - authenticate automatically."""
+    client.post('/auth/login', json={
+        'username': super_admin_user['username'],
+        'password': 'admin123'
+    })
+    return client
+
+
 @pytest.fixture(scope='function')
 def sample_file(client):
     """Create a sample survey file via API."""

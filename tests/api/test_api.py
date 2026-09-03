@@ -351,6 +351,8 @@ class TestAPIInterpolation:
 
     def test_interpolation_requires_file(self, client, sample_file):
         """Test interpolation requires current file."""
+        with client.session_transaction() as sess:
+            sess.pop('current_file', None)
         response = client.post('/api/calculate/interpolation', json={
             'vertical_interval': 2.0,
             'lines': [[1, 2]]

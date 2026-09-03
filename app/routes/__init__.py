@@ -1,8 +1,12 @@
 """
-Routes package for MAS application.
-"""
-from .main import main_bp
-from .files import files_bp
-from .api import api_bp
+Shared root routes package.
 
-__all__ = ['main_bp', 'files_bp', 'api_bp']
+Contains only project-wide, shared routes (landing, auth, admin).
+Program-specific routes live inside each program folder under
+app/programs/<name>/routes/.
+"""
+from .main import landing_bp
+from .auth import auth_bp
+from .admin import admin_bp
+
+__all__ = ['landing_bp', 'auth_bp', 'admin_bp']

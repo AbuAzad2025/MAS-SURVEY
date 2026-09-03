@@ -13,37 +13,33 @@
                 <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
             </div>
         </div>
-
-        <div class="guidance-box" style="background:#1a1a2e;border:1px solid #00ff41;padding:10px;border-radius:5px;margin-bottom:15px;">
-            <strong style="color:#00ff41;">📍 المدخلات:</strong>
-            <span style="color:#ccc;"> رقم نقطة البداية | المسافة | السمت | الارتفاع (اختياري)</span>
-            <br>
-            <strong style="color:#00ff41;">📤 المخرجات:</strong>
-            <span style="color:#ccc;"> إحداثيات النقطة الجديدة (Y, X, H)</span>
-        </div>
-
+        
         <div class="dos-box">
             <div class="dos-header">Implantation Data:</div>
             
             <div class="form-group">
                 <label>Base Point No:</label>
-                <input type="number" id="base-point" class="form-control" placeholder="Enter base point number" value="1">
+                <input type="number" id="base-point" class="form-control" placeholder="Enter base point number" value="1" min="1" max="9999"
+                       title="رقم نقطة البداية المعلومة في الملف - نقطة الانطلاق">
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="form-group">
                     <label>Distance:</label>
-                    <input type="number" id="implant-distance" class="form-control" step="0.001" placeholder="Distance to implant">
+                    <input type="number" id="implant-distance" class="form-control" step="0.001" placeholder="Distance to implant" min="0.001" max="99999.999"
+                           title="المسافة الأفقية من نقطة البداية إلى النقطة الجديدة - مطلوبة، أكبر من صفر">
                 </div>
                 <div class="form-group">
                     <label>Bearing (grads):</label>
-                    <input type="number" id="implant-bearing" class="form-control" step="0.0001" placeholder="Bearing direction">
+                    <input type="number" id="implant-bearing" class="form-control" step="0.0001" placeholder="Bearing direction" min="0" max="399.9999"
+                           title="السمت (الاتجاه) من نقطة البداية إلى النقطة الجديدة - بالـ grads (0-400)">
                 </div>
             </div>
             
             <div class="form-group">
                 <label>Height (optional):</label>
-                <input type="number" id="implant-height" class="form-control" step="0.01" placeholder="Height">
+                <input type="number" id="implant-height" class="form-control" step="0.01" placeholder="Height" min="-500" max="10000"
+                       title="ارتفاع النقطة الجديدة - اختياري، إذا ترك فارغاً سيستخدم ارتفاع نقطة البداية">
             </div>
             
             <button onclick="calculateImplant()" class="btn btn-primary">[ CALCULATE ]</button>
@@ -56,6 +52,9 @@
                 <div>X = <span id="implant-x" style="color: var(--text-highlight);">0.000</span></div>
                 <div>H = <span id="implant-h" style="color: var(--text-secondary);">0.000</span></div>
             </div>
+            <div style="margin-top: 10px; text-align: center;">
+                <button onclick="saveImplantPoint()" class="btn btn-primary">[ SAVE POINT ]</button>
+            </div>
         </div>
         
         <div style="text-align: center; margin-top: 20px;">
@@ -67,6 +66,8 @@
 
 {% block extra_js %}
 <script>
+var implantResultData = null;
+
 async function calculateImplant() {
     const basePointNo = parseInt(document.getElementById('base-point').value) || 1;
     const distance = parseFloat(document.getElementById('implant-distance').value) || 0;
@@ -79,32 +80,72 @@ async function calculateImplant() {
     }
     
     try {
-        const response = await fetch('/calculate/implant', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                base_point_no: basePointNo,
-                distance: distance,
-                bearing: bearing,
-                height: height
-            })
-        });
+        const response = await fetch('/api/points');
+        if (!response.ok) throw new Error('Failed to fetch points');
         
-        if (!response.ok) {
-            const err = await response.json();
-            MAS.showAlert(err.error || 'Calculation failed', 'error');
+        const points = await response.json();
+        const basePoint = points.find(p => p.no === basePointNo || p.point_no === basePointNo);
+        
+        if (!basePoint) {
+            MAS.showAlert('Base point not found', 'error');
             return;
         }
         
-        const result = await response.json();
+        const baseY = basePoint.y;
+        const baseX = basePoint.x;
+        const baseH = basePoint.h || 0;
+        
+        const implantResponse = await fetch('/calculate/implant', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                base_point: {y: baseY, x: baseX, h: baseH},
+                distance: distance,
+                bearing: bearing,
+                height: height || baseH
+            })
+        });
+        
+        if (!implantResponse.ok) {
+            const err = await implantResponse.json();
+            MAS.showAlert(err.error || 'Implant calculation failed', 'error');
+            return;
+        }
+        
+        const result = await implantResponse.json();
+        implantResultData = result.implant;
         
         document.getElementById('implant-y').textContent = result.implant.y.toFixed(3);
         document.getElementById('implant-x').textContent = result.implant.x.toFixed(3);
         document.getElementById('implant-h').textContent = result.implant.h.toFixed(3);
         document.getElementById('implant-result').style.display = 'block';
+        
     } catch (error) {
         MAS.showAlert('Error: ' + error.message, 'error');
     }
+}
+
+function saveImplantPoint() {
+    if (!implantResultData) {
+        MAS.showAlert('No point to save', 'error');
+        return;
+    }
+    
+    const newNo = prompt('Enter point number:', '100');
+    if (!newNo) return;
+    
+    const points = [{
+        no: parseInt(newNo),
+        y: implantResultData.y,
+        x: implantResultData.x,
+        h: implantResultData.h
+    }];
+    
+    MAS.savePoints(points, function(result) {
+        if (result.count > 0) {
+            MAS.showAlert('Point ' + newNo + ' saved successfully', 'success');
+        }
+    });
 }
 </script>
 {% endblock %}

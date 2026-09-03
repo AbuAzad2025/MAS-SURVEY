@@ -40,16 +40,16 @@ def create_app(config_name='default'):
     from app.routes.auth import init_default_super_admin
     init_default_super_admin(app.config['DATABASE'])
     
-    from app.routes.main import main_bp
-    from app.routes.files import files_bp
-    from app.routes.api import api_bp
+    # Shared, project-wide routes (landing/auth/admin) in the app root
+    from app.routes.main import landing_bp
     from app.routes.auth import auth_bp
     from app.routes.admin import admin_bp
-    
-    app.register_blueprint(main_bp)
-    app.register_blueprint(files_bp, url_prefix='/')
-    app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(landing_bp)
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(admin_bp)
-    
+
+    # Contained programs - each registered by name from app/programs/<name>
+    from app.programs.mas import register_mas_routes
+    register_mas_routes(app)
+
     return app

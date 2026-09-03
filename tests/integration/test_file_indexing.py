@@ -64,7 +64,7 @@ class TestDTFParsing:
 
     def test_parse_dtf_valid_content(self):
         """Test parsing valid DTF content."""
-        from app.routes.api import parse_dtf_file
+        from app.programs.mas.routes.api import parse_dtf_file
 
         header = b'SAMPLE          '
         marker = b'\xDC\x05\x00\x00'
@@ -82,21 +82,21 @@ class TestDTFParsing:
 
     def test_parse_dtf_empty_content(self):
         """Test parsing empty DTF content."""
-        from app.routes.api import parse_dtf_file
+        from app.programs.mas.routes.api import parse_dtf_file
 
         points = parse_dtf_file(b'')
         assert points == []
 
     def test_parse_dtf_too_small(self):
         """Test parsing too small DTF content."""
-        from app.routes.api import parse_dtf_file
+        from app.programs.mas.routes.api import parse_dtf_file
 
         points = parse_dtf_file(b'x')
         assert points == []
 
     def test_parse_dtf_invalid_header(self):
         """Test parsing DTF with invalid header."""
-        from app.routes.api import parse_dtf_file
+        from app.programs.mas.routes.api import parse_dtf_file
 
         content = b'INVALID_HEADER_' + b'\x00' * 50
         points = parse_dtf_file(content)

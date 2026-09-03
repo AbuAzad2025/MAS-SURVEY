@@ -360,8 +360,8 @@ class TestSettingsOperations:
 
         init_db(temp_db)
 
-        Settings.set(temp_db, 'test_key', 'test_value')
-        result = Settings.get(temp_db, 'test_key')
+        Settings.set(temp_db, 'company_name', 'test_value')
+        result = Settings.get(temp_db, 'company_name')
 
         assert result == 'test_value'
 
@@ -371,11 +371,11 @@ class TestSettingsOperations:
 
         init_db(temp_db)
 
-        Settings.set(temp_db, 'persist_key', 'persist_value')
+        Settings.set(temp_db, 'phone', 'persist_value')
 
         conn = sqlite3.connect(temp_db)
         cursor = conn.cursor()
-        cursor.execute('SELECT value FROM settings WHERE key = ?', ('persist_key',))
+        cursor.execute('SELECT value FROM settings WHERE key = ?', ('phone',))
         row = cursor.fetchone()
         conn.close()
 
@@ -387,10 +387,10 @@ class TestSettingsOperations:
 
         init_db(temp_db)
 
-        Settings.set(temp_db, 'key1', 'value1')
-        Settings.set(temp_db, 'key2', 'value2')
+        Settings.set(temp_db, 'company_name', 'value1')
+        Settings.set(temp_db, 'phone', 'value2')
 
         result = Settings.get_all(temp_db)
 
-        assert result['key1'] == 'value1'
-        assert result['key2'] == 'value2'
+        assert result['company_name'] == 'value1'
+        assert result['phone'] == 'value2'

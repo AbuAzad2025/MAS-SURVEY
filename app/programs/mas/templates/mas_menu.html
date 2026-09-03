@@ -79,26 +79,42 @@
             <div class="number">0</div>
             <div class="text">PLAN ON SCREEN</div>
         </a>
-    </div>
-    
-    <div class="info-bar">
-        <div>
-            <span class="info-label">FILE: </span>
-            <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
+</div>
+        
+        <div class="info-bar">
+            <div>
+                <span class="info-label">FILE: </span>
+                <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
+            </div>
+            <div>
+                <span class="info-label">POINTS: </span>
+                <span class="info-value">{{ file_info.no_of_points if file_info else '0' }}</span>
+            </div>
+            <div>
+                <span class="info-label">UNIT: </span>
+                <span class="info-value">{{ settings.angle_unit if settings.angle_unit else 'GRADS' }}</span>
+            </div>
+            <div>
+                <span class="info-label" style="color: #00ff41;">USER: </span>
+                <span class="info-value" style="color: #00ff41;">{{ session.user_name or session.username }}</span>
+                <span class="info-label" style="margin-left: 10px; 
+                    {% if session.user_role == 'super_admin' %}color: #ff4444;
+                    {% elif session.user_role == 'registered' %}color: #00ffff;
+                    {% else %}color: #ffff00;{% endif %}">
+                    [{{ session.user_role }}]
+                </span>
+            </div>
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <a href="{{ url_for('landing.index') }}" class="btn" style="padding: 5px 10px; font-size: 11px;">[ HOME ]</a>
+                <button onclick="showGuide()" class="btn" style="padding: 5px 10px; font-size: 11px;">[ GUIDE ]</button>
+                {% if session.user_role == 'super_admin' %}
+                <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="padding: 5px 10px; font-size: 11px; background: #1a0000; border-color: #ff4444;">[ ADMIN ]</a>
+                {% endif %}
+                <form action="{{ url_for('auth.logout') }}" method="POST" style="margin: 0;">
+                    <button type="submit" class="btn" style="padding: 5px 10px; font-size: 11px; background: #1a0000; border-color: #ff4444;">[ LOGOUT ]</button>
+                </form>
+            </div>
         </div>
-        <div>
-            <span class="info-label">POINTS: </span>
-            <span class="info-value">{{ file_info.no_of_points if file_info else '0' }}</span>
-        </div>
-        <div>
-            <span class="info-label">UNIT: </span>
-            <span class="info-value">{{ settings.angle_unit if settings.angle_unit else 'GRADS' }}</span>
-        </div>
-        <div>
-            <a href="{{ url_for('landing.index') }}" class="btn" style="padding: 5px 15px;">[ HOME ]</a>
-            <button onclick="showGuide()" class="btn" style="padding: 5px 15px; cursor: pointer;">[ USER GUIDE ]</button>
-        </div>
-    </div>
 </div>
 
 <!-- Guide Modal -->
@@ -261,16 +277,16 @@ document.addEventListener('keydown', function(e) {
     var key = e.key;
     
     switch(key) {
-        case '1': window.location.href = '/mas/work-mode'; break;
-        case '2': window.location.href = '/mas/files'; break;
-        case '3': window.location.href = '/mas/polar'; break;
-        case '4': window.location.href = '/mas/offsets'; break;
-        case '5': window.location.href = '/mas/circle'; break;
-        case '6': window.location.href = '/mas/intersections'; break;
-        case '7': window.location.href = '/mas/implants'; break;
-        case '8': window.location.href = '/mas/area'; break;
-        case '9': window.location.href = '/mas/plotting'; break;
-        case '0': window.location.href = '/mas/plan'; break;
+        case '1': window.location.href = '/work-mode'; break;
+        case '2': window.location.href = '/files'; break;
+        case '3': window.location.href = '/polar'; break;
+        case '4': window.location.href = '/offsets'; break;
+        case '5': window.location.href = '/circle'; break;
+        case '6': window.location.href = '/intersections'; break;
+        case '7': window.location.href = '/implants'; break;
+        case '8': window.location.href = '/area'; break;
+        case '9': window.location.href = '/plotting'; break;
+        case '0': window.location.href = '/plan'; break;
         case 'h':
         case 'H': window.location.href = '/'; break;
         case 'g':
@@ -284,7 +300,7 @@ document.addEventListener('keydown', function(e) {
 function handleFileChange(filename) {
     if (!filename) return;
     if (filename === 'new') {
-        window.location.href = '/mas/files/new';
+        window.location.href = '/files/new';
         return;
     }
     MAS.setCurrentFile(filename, function() {

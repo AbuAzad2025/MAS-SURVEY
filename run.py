@@ -2,11 +2,20 @@
 MAS - Surveying Computerized System
 Entry point for running the application.
 """
+import sys
 from app import create_app
 
 app = create_app('development')
 
 if __name__ == '__main__':
+    if '--help' in sys.argv or '-h' in sys.argv:
+        print("Usage: python run.py [--help] [--version]")
+        print("  Run without arguments to start the MAS web server.")
+        sys.exit(0)
+    if '--version' in sys.argv:
+        print("MAS Web Application v1.0")
+        sys.exit(0)
+
     print("\n" + "=" * 60)
     print("  MAS - Surveying Computerized System")
     print("  Web Application v1.0")

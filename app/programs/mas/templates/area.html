@@ -54,7 +54,7 @@
                 <tbody>
                     {% for point in points %}
                     <tr>
-                        <td>{{ point.point_no }}</td>
+                        <td>{{ point.no or point.point_no }}</td>
                         <td>{{ "%.2f"|format(point.y) }}</td>
                         <td>{{ "%.2f"|format(point.x) }}</td>
                         <td>{{ "%.2f"|format(point.h) }}</td>
@@ -66,7 +66,7 @@
         
         <div style="text-align: center; margin-top: 15px;">
             <button onclick="calculateArea()" class="btn btn-primary">[ CALCULATE AREA ]</button>
-            <button onclick="window.print()" class="btn">[ PRINT ]</button>
+            <button onclick="printArea()" class="btn">[ PRINT ]</button>
         </div>
         
         {% else %}
@@ -112,26 +112,50 @@ async function calculateArea() {
             body: JSON.stringify({points: points})
         });
         
-        if (!response.ok) throw new Error('Area calculation failed');
+        if (!response.ok) {
+            const err = await response.json();
+            MAS.showAlert(err.error || 'Area calculation failed', 'error');
+            return;
+        }
         
-        const areaResult = await response.json();
+        const result = await response.json();
         
-        const perimResponse = await fetch('/calculate/perimeter', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({points: points})
-        });
-        
-        if (!perimResponse.ok) throw new Error('Perimeter calculation failed');
-        
-        const perimResult = await perimResponse.json();
-        
-        document.getElementById('area-value').textContent = areaResult.area.toFixed(2);
-        document.getElementById('perimeter-value').textContent = perimResult.perimeter.toFixed(2);
+        document.getElementById('area-value').textContent = result.area.toFixed(2);
+        document.getElementById('perimeter-value').textContent = result.perimeter.toFixed(2);
         document.getElementById('area-result').style.display = 'block';
+        
     } catch (error) {
         MAS.showAlert('Error: ' + error.message, 'error');
     }
+}
+
+function printArea() {
+    const area = document.getElementById('area-value').textContent;
+    const perimeter = document.getElementById('perimeter-value').textContent;
+    
+    let printContent = '';
+    
+    printContent += '====================================================\n';
+    printContent += 'SURVEYING SYSTEMS\n';
+    printContent += 'LICENCED SURVEYER No. 000\n';
+    printContent += 'RAMALLAH P.O.BOX 0000\n';
+    printContent += 'TELEPHONE: 0562150193\n';
+    printContent += 'HEADER FOR PRINTING HERE\n';
+    printContent += '====================================================\n';
+    
+    printContent += '\nA R E A &   P E R I M E T E R\n';
+    printContent += '====================================================\n\n';
+    printContent += 'AREA      = ' + area + ' m2\n';
+    printContent += 'PERIMETER = ' + perimeter + ' m\n';
+    printContent += '\n====================================================\n';
+    
+    var printWindow = window.open('', '_blank');
+    printWindow.document.write('<!DOCTYPE html><html><head><title>Print - MAS</title>');
+    printWindow.document.write('<style>body{font-family:"Courier New",monospace;margin:20px;white-space:pre;}</style>');
+    printWindow.document.write('</head><body>' + printContent + '</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
 }
 </script>
 {% endblock %}

@@ -7,25 +7,19 @@
     <div class="card-header">[ O F F S E T S ]</div>
     
     <div class="card-body">
-        <div class="guidance-box" style="background:#1a1a2e;border:1px solid #00ff41;padding:10px;border-radius:5px;margin-bottom:15px;">
-            <strong style="color:#00ff41;">📍 المدخلات:</strong>
-            <span style="color:#ccc;"> نقطة بداية الخط | نقطة نهاية الخط | مسافة الإزاحة | الجهة (LEFT/RIGHT)</span>
-            <br>
-            <strong style="color:#00ff41;">📤 المخرجات:</strong>
-            <span style="color:#ccc;"> إحداثيات النقاط الإزاحة (Y, X)</span>
-        </div>
-
         <div class="dos-box">
             <div class="dos-header">Line Definition:</div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                 <div class="form-group">
                     <label>Line Start Point No:</label>
-                    <input type="number" id="line-start" class="form-control" placeholder="Point number">
+                    <input type="number" id="line-start" class="form-control" placeholder="Point number" value="1" min="1" max="9999"
+                           title="رقم نقطة بداية الخط - يجب أن تكون في الملف الحالي">
                 </div>
                 <div class="form-group">
                     <label>Line End Point No:</label>
-                    <input type="number" id="line-end" class="form-control" placeholder="Point number">
+                    <input type="number" id="line-end" class="form-control" placeholder="Point number" value="2" min="1" max="9999"
+                           title="رقم نقطة نهاية الخط - يجب أن تكون في الملف الحالي ومختلفة عن نقطة البداية">
                 </div>
             </div>
         </div>
@@ -44,15 +38,20 @@
                 </thead>
                 <tbody id="offsets-tbody">
                     <tr>
-                        <td><input type="number" class="form-control" name="no[]"></td>
-                        <td><input type="number" class="form-control" name="offset[]" step="0.01"></td>
+                        <td><input type="number" class="form-control" name="no[]" min="1" max="9999"
+                                   title="رقم تعريف النقطة (للحفظ في الملف)"></td>
+                        <td><input type="number" class="form-control" name="offset[]" step="0.01" min="0.001" max="9999.999"
+                                   placeholder="مسافة الإزاحة (متر)"
+                                   title="المسافة العمودية من الخط إلى النقطة - مطلوبة، أكبر من صفر">
+                        </td>
                         <td>
-                            <select class="form-control" name="side[]">
-                                <option value="LEFT">LEFT</option>
-                                <option value="RIGHT">RIGHT</option>
+                            <select class="form-control" name="side[]" title="جهة الإزاحة بالنسبة لخط الاتجاه">
+                                <option value="LEFT">LEFT (يسار)</option>
+                                <option value="RIGHT">RIGHT (يمين)</option>
                             </select>
                         </td>
-                        <td><input type="text" class="form-control" name="desc[]" placeholder="Description"></td>
+                        <td><input type="text" class="form-control" name="desc[]" placeholder="وصف مختصر" maxlength="50"
+                                   title="وصف اختياري للنقطة (مثال: زاوية بناء، سياج، عمود)"></td>
                     </tr>
                 </tbody>
             </table>
@@ -66,6 +65,9 @@
         <div id="offset-result" class="dos-box" style="display: none; margin-top: 15px;">
             <div class="dos-header">Calculated Points:</div>
             <div id="offset-result-content"></div>
+            <div style="margin-top: 15px;">
+                <button onclick="saveOffsetResults()" class="btn btn-primary">[ SAVE RESULTS ]</button>
+            </div>
         </div>
         
         <div style="text-align: center; margin-top: 20px;">
@@ -77,6 +79,8 @@
 
 {% block extra_js %}
 <script>
+var offsetResultsData = null;
+
 function addOffsetRow() {
     const tbody = document.getElementById('offsets-tbody');
     const row = document.createElement('tr');
@@ -95,74 +99,109 @@ function addOffsetRow() {
 }
 
 async function calculateOffsets() {
-    const lineStartNo = parseInt(document.getElementById('line-start').value) || 0;
-    const lineEndNo = parseInt(document.getElementById('line-end').value) || 0;
-    
-    if (lineStartNo === 0 || lineEndNo === 0) {
-        MAS.showAlert('Please enter line start and end point numbers', 'error');
-        return;
-    }
-    
-    const points = [];
-    const tbody = document.getElementById('offsets-tbody');
-    const rows = tbody.querySelectorAll('tr');
-    
-    rows.forEach((row) => {
-        const inputs = row.querySelectorAll('input, select');
-        const no = parseInt(inputs[0].value) || 0;
-        const offsetDist = parseFloat(inputs[1].value) || 0;
-        const side = inputs[2].value;
-        
-        if (no > 0 && offsetDist >= 0) {
-            points.push({
-                no: no,
-                offset_distance: offsetDist,
-                side: side
-            });
-        }
-    });
-    
-    if (points.length === 0) {
-        MAS.showAlert('Please enter at least one offset point', 'error');
-        return;
-    }
+    const startNo = parseInt(document.getElementById('line-start').value) || 1;
+    const endNo = parseInt(document.getElementById('line-end').value) || 2;
     
     try {
+        const pointsResponse = await fetch('/api/points');
+        if (!pointsResponse.ok) throw new Error('Failed to fetch points');
+        
+        const allPoints = await pointsResponse.json();
+        
+        const startPoint = allPoints.find(p => p.no === startNo || p.point_no === startNo);
+        const endPoint = allPoints.find(p => p.no === endNo || p.point_no === endNo);
+        
+        if (!startPoint || !endPoint) {
+            MAS.showAlert('Line points not found', 'error');
+            return;
+        }
+        
+        const lineStart = {y: startPoint.y, x: startPoint.x};
+        const lineEnd = {y: endPoint.y, x: endPoint.x};
+        
+        const offsetPoints = [];
+        const tbody = document.getElementById('offsets-tbody');
+        const rows = tbody.querySelectorAll('tr');
+        
+        rows.forEach(row => {
+            const inputs = row.querySelectorAll('input, select');
+            const no = parseInt(inputs[0].value) || 0;
+            const offsetDist = parseFloat(inputs[1].value) || 0;
+            const side = inputs[2].value || 'LEFT';
+            
+            if (no > 0 && offsetDist > 0) {
+                offsetPoints.push({
+                    no: no,
+                    offset_distance: offsetDist,
+                    side: side
+                });
+            }
+        });
+        
+        if (offsetPoints.length === 0) {
+            MAS.showAlert('Please enter at least one offset point', 'error');
+            return;
+        }
+        
         const response = await fetch('/calculate/offsets', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                line_start_no: lineStartNo,
-                line_end_no: lineEndNo,
-                points: points
+                line_start: lineStart,
+                line_end: lineEnd,
+                points: offsetPoints
             })
         });
         
         if (!response.ok) {
             const err = await response.json();
-            MAS.showAlert(err.error || 'Calculation failed', 'error');
+            MAS.showAlert(err.error || 'Offset calculation failed', 'error');
             return;
         }
         
         const result = await response.json();
+        offsetResultsData = result.results;
         
-        let html = '<table class="data-table"><thead><tr><th>No</th><th>Y</th><th>X</th><th>Side</th></tr></thead><tbody>';
-        result.results.forEach(r => {
-            html += `<tr><td>${r.no}</td><td>${r.y.toFixed(2)}</td><td>${r.x.toFixed(2)}</td><td>${r.side}</td></tr>`;
+        let html = '<table class="data-table" style="width:100%;"><thead><tr>';
+        html += '<th>No</th><th>Y</th><th>X</th><th>Side</th>';
+        html += '</tr></thead><tbody>';
+        
+        result.results.forEach(p => {
+            html += '<tr>';
+            html += '<td>' + p.no + '</td>';
+            html += '<td>' + (p.y || 0).toFixed(3) + '</td>';
+            html += '<td>' + (p.x || 0).toFixed(3) + '</td>';
+            html += '<td>' + p.side + '</td>';
+            html += '</tr>';
         });
-        html += '</tbody></table>';
         
+        html += '</tbody></table>';
         document.getElementById('offset-result-content').innerHTML = html;
         document.getElementById('offset-result').style.display = 'block';
         
-        MAS.savePoints(result.results.map(r => ({no: r.no, y: r.y, x: r.x, h: 0.0001})), function(saveResult) {
-            if (saveResult.count > 0) {
-                MAS.showAlert(saveResult.count + ' points saved successfully', 'success');
-            }
-        });
     } catch (error) {
         MAS.showAlert('Error: ' + error.message, 'error');
     }
+}
+
+function saveOffsetResults() {
+    if (!offsetResultsData || offsetResultsData.length === 0) {
+        MAS.showAlert('No results to save', 'error');
+        return;
+    }
+    
+    const points = offsetResultsData.map(p => ({
+        no: p.no,
+        y: p.y || 0,
+        x: p.x || 0,
+        h: 0
+    }));
+    
+    MAS.savePoints(points, function(result) {
+        if (result.count > 0) {
+            MAS.showAlert(result.count + ' offset points saved successfully', 'success');
+        }
+    });
 }
 </script>
 {% endblock %}

@@ -13,15 +13,7 @@
                 <span class="info-value">{{ file_info.name if file_info else '---' }}</span>
             </div>
         </div>
-
-        <div class="guidance-box" style="background:#1a1a2e;border:1px solid #00ff41;padding:10px;border-radius:5px;margin-bottom:15px;">
-            <strong style="color:#00ff41;">📍 المدخلات:</strong>
-            <span style="color:#ccc;"> أرقام النقاط المعلومة | الزوايا أو المسافات المقاسة</span>
-            <br>
-            <strong style="color:#00ff41;">📤 المخرجات:</strong>
-            <span style="color:#ccc;"> موقع النقطة المجهولة (Y, X) - حل أو حلين</span>
-        </div>
-
+        
         <div class="dos-box">
             <div class="dos-header">Resection from 2 Points:</div>
             <p style="font-size: 12px; color: #888; margin-bottom: 15px;">
@@ -31,28 +23,33 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 <div class="form-group">
                     <label>Point 1 No:</label>
-                    <input type="number" id="resect-p1" class="form-control" value="1" min="1">
+                    <input type="number" id="resect-p1" class="form-control" value="1" min="1" max="9999"
+                           title="رقم نقطة معلومة الأولى في الملف - يجب أن تكون موجودة">
                 </div>
                 <div class="form-group">
                     <label>Point 2 No:</label>
-                    <input type="number" id="resect-p2" class="form-control" value="2" min="1">
+                    <input type="number" id="resect-p2" class="form-control" value="2" min="1" max="9999"
+                           title="رقم نقطة معلومة الثانية في الملف - يجب أن تكون مختلفة عن نقطة 1">
                 </div>
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 <div class="form-group">
                     <label>Distance to Point 1 (m):</label>
-                    <input type="number" id="resect-dist1" class="form-control" step="0.001" placeholder="Distance">
+                    <input type="number" id="resect-dist1" class="form-control" step="0.001" placeholder="Distance" min="0.001" max="99999.999"
+                           title="المسافة المقاسة من نقطة المحطة المجهولة إلى النقطة المعلومة 1">
                 </div>
                 <div class="form-group">
                     <label>Distance to Point 2 (m):</label>
-                    <input type="number" id="resect-dist2" class="form-control" step="0.001" placeholder="Distance">
+                    <input type="number" id="resect-dist2" class="form-control" step="0.001" placeholder="Distance" min="0.001" max="99999.999"
+                           title="المسافة المقاسة من نقطة المحطة المجهولة إلى النقطة المعلومة 2">
                 </div>
             </div>
             
             <div class="form-group">
                 <label>New Station Point No:</label>
-                <input type="number" id="resect-new-no" class="form-control" value="100" min="1">
+                <input type="number" id="resect-new-no" class="form-control" value="100" min="1" max="9999"
+                       title="رقم نقطة المحطة المحسوبة للحفظ في الملف">
             </div>
             
             <button onclick="calculateResection()" class="btn btn-primary">[ CALCULATE ]</button>

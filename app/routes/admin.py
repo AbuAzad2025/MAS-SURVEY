@@ -3,7 +3,7 @@ Super Admin panel routes for MAS application.
 User management, system settings, statistics.
 """
 from flask import Blueprint, request, jsonify, session, render_template, current_app
-from app.shared.models import User, User as UserModel, SurveyFile, SurveyPoint
+from app.shared.models import User, User as UserModel, SurveyFile, SurveyPoint, Settings
 from app.routes.auth import super_admin_required, login_required
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
