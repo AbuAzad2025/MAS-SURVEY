@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - Tenant Details{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        [ T E N A N T &nbsp; D E T A I L S ]
+    </div>
+
+    <div class="card-body">
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #004400; flex-wrap: wrap;">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="font-size: 12px;">[ DASHBOARD ]</a>
+            <a href="/admin/tenants" class="btn btn-primary" style="font-size: 12px;">[ TENANTS ]</a>
+            <a href="/admin/subscriptions" class="btn" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
+            <a href="/admin/plans" class="btn" style="font-size: 12px;">[ PLANS ]</a>
+            <a href="/admin/activity" class="btn" style="font-size: 12px;">[ ACTIVITY ]</a>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <a href="/admin/tenants" class="btn" style="font-size: 12px;">&larr; Back to Tenants / رجوع</a>
+        </div>
+
+        <div id="detail-error" style="color: #ff4444; margin-bottom: 10px; display: none;"></div>
+
+        <h3 style="color: #00ff41;">Tenant Info / بيانات المستأجر</h3>
+        <div id="tenant-info" class="card" style="margin-bottom: 20px;">
+            <div class="card-body" style="color: #ccc; font-size: 13px;">Loading... جار التحميل</div>
+        </div>
+        <div id="tenant-actions" style="display: flex; gap: 10px; margin-bottom: 25px;"></div>
+
+        <h3 style="color: #00ff41;">Users / المستخدمون</h3>
+        <div class="table-responsive" style="margin-bottom: 25px;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">ID</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Username</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Role</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Active</th>
+                    </tr>
+                </thead>
+                <tbody id="users-body">
+                    <tr><td colspan="4" style="border:1px solid #004400;padding:12px;text-align:center;color:#888;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3 style="color: #00ff41;">Files / الملفات</h3>
+        <div class="table-responsive" style="margin-bottom: 25px;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">ID</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Name</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Date</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Place</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Points</th>
+                    </tr>
+                </thead>
+                <tbody id="files-body">
+                    <tr><td colspan="5" style="border:1px solid #004400;padding:12px;text-align:center;color:#888;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3 style="color: #00ff41;">Subscription History / سجل الاشتراكات</h3>
+        <div class="table-responsive">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">ID</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Plan</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Status</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Start Date</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">End Date</th>
+                    </tr>
+                </thead>
+                <tbody id="subs-body">
+                    <tr><td colspan="5" style="border:1px solid #004400;padding:12px;text-align:center;color:#888;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function tenantIdFromPath() {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    return parts[parts.length - 1];
+}
+
+function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function subColor(status) {
+    if (status === 'active') return 'background:#001a00;color:#00ff41;';
+    if (status === 'expired') return 'background:#1a0000;color:#ff4444;';
+    if (status === 'cancelled') return 'background:#1a1a00;color:#ffff00;';
+    return 'background:#1a1a1a;color:#888888;';
+}
+
+function loadDetail() {
+    const id = tenantIdFromPath();
+    fetch('/admin/api/tenants/' + encodeURIComponent(id))
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                const e = document.getElementById('detail-error');
+                e.textContent = data.error;
+                e.style.display = 'block';
+                return;
+            }
+            renderDetail(id, data.tenant, data.users || [], data.files || [], data.subscriptions || []);
+        })
+        .catch(err => {
+            const e = document.getElementById('detail-error');
+            e.textContent = 'Error: ' + err.message;
+            e.style.display = 'block';
+        });
+}
+
+function renderDetail(id, t, users, files, subs) {
+    const suspended = !!t.is_suspended;
+    const sub = t.active_subscription || null;
+
+    document.getElementById('tenant-info').innerHTML =
+        '<div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;font-size:13px;">' +
+        '<div><span style="color:#888;">ID:</span> <strong>' + t.id + '</strong></div>' +
+        '<div><span style="color:#888;">Name / الاسم:</span> <strong>' + esc(t.name) + '</strong></div>' +
+        '<div><span style="color:#888;">Owner / المالك:</span> ' + esc(t.owner_username || '-') + '</div>' +
+        '<div><span style="color:#888;">Plan / الخطة:</span> ' + esc(sub ? (sub.plan_name || t.plan || '-') : (t.plan || '-')) + '</div>' +
+        '<div><span style="color:#888;">Status / الحالة:</span> <span style="padding:2px 8px;border-radius:3px;font-size:11px;' +
+            (suspended ? 'background:#1a0000;color:#ff4444;">موقوف' : 'background:#001a00;color:#00ff41;">نشط') + '</span></div>' +
+        '<div><span style="color:#888;">Expires / تنتهي:</span> ' + esc(sub ? (sub.end_date || t.expires_at || '-') : (t.expires_at || '-')) + '</div>' +
+        '<div><span style="color:#888;">Users:</span> ' + (t.users_count || users.length || 0) + '</div>' +
+        '<div><span style="color:#888;">Files:</span> ' + (t.files_count || files.length || 0) + '</div>' +
+        '<div><span style="color:#888;">Points:</span> ' + (t.points_count || 0) + '</div>' +
+        '</div>';
+
+    document.getElementById('tenant-actions').innerHTML = suspended
+        ? '<button onclick="unsuspendTenant(' + id + ')" class="btn" style="background:#00ff44;">[ UNSUSPEND / إلغاء التعليق ]</button>'
+        : '<button onclick="suspendTenant(' + id + ')" class="btn" style="background:#1a0000;border-color:#ff4444;">[ SUSPEND / تعليق ]</button>';
+
+    const ub = document.getElementById('users-body');
+    ub.innerHTML = '';
+    if (!users.length) {
+        ub.innerHTML = '<tr><td colspan="4" style="border:1px solid #004400;padding:12px;text-align:center;color:#888;">No users / لا يوجد مستخدمون</td></tr>';
+    } else {
+        users.forEach(u => {
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td style="border:1px solid #004400;padding:6px;">' + u.id + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;"><strong>' + esc(u.username) + '</strong></td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(u.role || '-') + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + (u.is_active ? 'Yes / نعم' : 'No / لا') + '</td>';
+            ub.appendChild(tr);
+        });
+    }
+
+    const fb = document.getElementById('files-body');
+    fb.innerHTML = '';
+    if (!files.length) {
+        fb.innerHTML = '<tr><td colspan="5" style="border:1px solid #004400;padding:12px;text-align:center;color:#888;">No files / لا توجد ملفات</td></tr>';
+    } else {
+        files.forEach(f => {
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td style="border:1px solid #004400;padding:6px;">' + f.id + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(f.name) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(f.date || '-') + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(f.place || '-') + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + (f.no_of_points || 0) + '</td>';
+            fb.appendChild(tr);
+        });
+    }
+
+    const sb = document.getElementById('subs-body');
+    sb.innerHTML = '';
+    if (!subs.length) {
+        sb.innerHTML = '<tr><td colspan="5" style="border:1px solid #004400;padding:12px;text-align:center;color:#888;">No subscriptions / لا توجد اشتراكات</td></tr>';
+    } else {
+        subs.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td style="border:1px solid #004400;padding:6px;">' + s.id + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.plan_name || '-') + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;"><span style="padding:2px 8px;border-radius:3px;font-size:11px;' + subColor(s.status) + '">' + esc(s.status || '-') + '</span></td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.start_date || '-') + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.end_date || '-') + '</td>';
+            sb.appendChild(tr);
+        });
+    }
+}
+
+function suspendTenant(id) {
+    if (!confirm('Suspend this tenant? تعليق هذا المستأجر؟')) return;
+    fetch('/admin/api/tenants/' + id + '/suspend', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        })
+        .catch(err => alert('Error: ' + err.message));
+}
+
+function unsuspendTenant(id) {
+    if (!confirm('Unsuspend this tenant? إلغاء تعليق هذا المستأجر؟')) return;
+    fetch('/admin/api/tenants/' + id + '/unsuspend', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        })
+        .catch(err => alert('Error: ' + err.message));
+}
+
+loadDetail();
+</script>
+{% endblock %}

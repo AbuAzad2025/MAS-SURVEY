@@ -14,6 +14,7 @@ class Tenant(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     name = db.Column(db.String(120), nullable=False)
     plan = db.Column(db.String(20), default='free')  # free/pro/enterprise
+    is_suspended = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime)
 

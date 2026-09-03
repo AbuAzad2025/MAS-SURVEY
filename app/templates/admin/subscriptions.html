@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - Subscription Management{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        [ S U B S C R I P T I O N S ]
+    </div>
+
+    <div class="card-body">
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #004400; flex-wrap: wrap;">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="font-size: 12px;">[ DASHBOARD ]</a>
+            <a href="{{ url_for('admin.admin_users') }}" class="btn" style="font-size: 12px;">[ USERS ]</a>
+            <a href="{{ url_for('admin.admin_files') }}" class="btn" style="font-size: 12px;">[ FILES ]</a>
+            <a href="{{ url_for('admin.admin_settings') }}" class="btn" style="font-size: 12px;">[ SETTINGS ]</a>
+            <a href="{{ url_for('admin.admin_logs') }}" class="btn" style="font-size: 12px;">[ LOGS ]</a>
+            <a href="/admin/subscriptions" class="btn btn-primary" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
+            <a href="/admin/plans" class="btn" style="font-size: 12px;">[ PLANS ]</a>
+            <a href="{{ url_for('main.mas_menu') }}" class="btn" style="font-size: 12px;">[ MAS MENU ]</a>
+        </div>
+
+        <h3 style="color: #00ff41;">New Subscription | اشتراك جديد</h3>
+        <div class="dos-box" style="margin-bottom: 20px;">
+            <div class="dos-header">Create Subscription</div>
+            <form id="sub-create-form">
+                <div class="form-group">
+                    <label>Tenant ID *</label>
+                    <input type="number" id="sub-tenant-id" class="form-control" min="1" step="1" required placeholder="e.g. 3">
+                </div>
+                <div class="form-group">
+                    <label>Plan * | الخطة</label>
+                    <select id="sub-plan-id" class="form-control" required>
+                        <option value="">-- Loading plans... --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notes | ملاحظات</label>
+                    <input type="text" id="sub-notes" class="form-control" placeholder="Optional note">
+                </div>
+                <div id="sub-create-error" style="color: #ff4444; margin-bottom: 10px; display: none;"></div>
+                <button type="submit" class="btn btn-primary">[ CREATE SUBSCRIPTION ]</button>
+            </form>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="color: #00ff41; margin: 0;">Pending Queue | بانتظار الموافقة (<span id="pending-count">0</span>)</h3>
+            <button onclick="loadSubscriptions()" class="btn" style="font-size: 12px;">[ REFRESH ]</button>
+        </div>
+        <div class="table-responsive" style="margin-bottom: 25px;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">ID</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Tenant</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Plan</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Price</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Requested</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Notes</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="pending-body">
+                    <tr><td colspan="7" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="color: #00ff41; margin: 0;">History | السجل</h3>
+            <label style="font-size: 12px; color: #ccc;">Status | الحالة:
+                <select id="history-filter" class="form-control" style="display: inline-block; width: auto;" onchange="loadHistory()">
+                    <option value="all">All | الكل</option>
+                    <option value="pending">Pending | بانتظار</option>
+                    <option value="active">Active | نشط</option>
+                </select>
+            </label>
+        </div>
+        <div class="table-responsive">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">ID</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Tenant</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Plan</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Price</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Status</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Start</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">End</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Approved By</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="history-body">
+                    <tr><td colspan="9" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function esc(v) {
+    if (v === null || v === undefined) return '-';
+    return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function statusColor(s) {
+    if (s === 'active') return '#00ff41';
+    if (s === 'pending') return '#ffaa00';
+    return '#ff4444';
+}
+
+async function loadPlans() {
+    const sel = document.getElementById('sub-plan-id');
+    try {
+        const r = await fetch('/admin/api/plans');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const plans = await r.json();
+        const list = Array.isArray(plans) ? plans : (plans.plans || []);
+        sel.innerHTML = '';
+        if (!list.length) {
+            sel.innerHTML = '<option value="">-- No plans available --</option>';
+            return;
+        }
+        list.forEach(function(p) {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name + ' (' + p.price + ')';
+            sel.appendChild(opt);
+        });
+    } catch (e) {
+        sel.innerHTML = '<option value="">-- Failed to load plans --</option>';
+    }
+}
+
+async function loadSubscriptions() {
+    const body = document.getElementById('pending-body');
+    try {
+        const r = await fetch('/admin/api/subscriptions?status=pending');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        const list = Array.isArray(data) ? data : (data.subscriptions || []);
+        document.getElementById('pending-count').textContent = list.length;
+        if (!list.length) {
+            body.innerHTML = '<tr><td colspan="7" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">No pending subscriptions | لا توجد طلبات معلقة</td></tr>';
+            return;
+        }
+        body.innerHTML = list.map(function(s) {
+            return '<tr>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.id) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.tenant_name || s.tenant_id) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.plan_name) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.price) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.created_at) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.notes) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;white-space:nowrap;">' +
+                    '<button onclick="approveSub(' + s.id + ')" class="btn" style="padding:4px 8px;font-size:11px;background:#001a00;border-color:#00ff41;">Approve</button> ' +
+                    '<button onclick="rejectSub(' + s.id + ')" class="btn" style="padding:4px 8px;font-size:11px;background:#1a0000;border-color:#ff4444;">Reject</button>' +
+                '</td></tr>';
+        }).join('');
+    } catch (e) {
+        body.innerHTML = '<tr><td colspan="7" style="border:1px solid #004400;padding:6px;text-align:center;color:#ff4444;">Failed to load | تعذر التحميل</td></tr>';
+    }
+}
+
+async function loadHistory() {
+    const status = document.getElementById('history-filter').value;
+    const body = document.getElementById('history-body');
+    body.innerHTML = '<tr><td colspan="9" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">Loading...</td></tr>';
+    try {
+        const r = await fetch('/admin/api/subscriptions?status=' + encodeURIComponent(status));
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        const list = Array.isArray(data) ? data : (data.subscriptions || []);
+        if (!list.length) {
+            body.innerHTML = '<tr><td colspan="9" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">No records | لا توجد سجلات</td></tr>';
+            return;
+        }
+        body.innerHTML = list.map(function(s) {
+            return '<tr>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.id) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.tenant_name || s.tenant_id) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.plan_name) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.price) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;color:' + statusColor(s.status) + ';font-weight:bold;">' + esc(s.status) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.start_date) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.end_date) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.approved_by) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(s.notes) + '</td></tr>';
+        }).join('');
+    } catch (e) {
+        body.innerHTML = '<tr><td colspan="9" style="border:1px solid #004400;padding:6px;text-align:center;color:#ff4444;">Failed to load | تعذر التحميل</td></tr>';
+    }
+}
+
+async function approveSub(id) {
+    if (!confirm('Approve subscription #' + id + '?')) return;
+    try {
+        const r = await fetch('/admin/api/subscriptions/' + id + '/approve', { method: 'POST' });
+        const result = await r.json();
+        if (!r.ok || result.error) {
+            alert('Error: ' + (result.error || ('HTTP ' + r.status)));
+            return;
+        }
+        loadSubscriptions();
+        loadHistory();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+async function rejectSub(id) {
+    if (!confirm('Reject subscription #' + id + '?')) return;
+    const reason = prompt('Rejection reason (optional) | سبب الرفض (اختياري):', '');
+    if (reason === null) return;
+    try {
+        const r = await fetch('/admin/api/subscriptions/' + id + '/reject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: reason })
+        });
+        const result = await r.json();
+        if (!r.ok || result.error) {
+            alert('Error: ' + (result.error || ('HTTP ' + r.status)));
+            return;
+        }
+        loadSubscriptions();
+        loadHistory();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+document.getElementById('sub-create-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const errDiv = document.getElementById('sub-create-error');
+    errDiv.style.display = 'none';
+    const data = {
+        tenant_id: parseInt(document.getElementById('sub-tenant-id').value, 10),
+        plan_id: parseInt(document.getElementById('sub-plan-id').value, 10),
+        notes: document.getElementById('sub-notes').value || undefined
+    };
+    try {
+        const r = await fetch('/admin/api/subscriptions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await r.json();
+        if (!r.ok || result.error) {
+            errDiv.textContent = result.error || ('HTTP ' + r.status);
+            errDiv.style.display = 'block';
+            return;
+        }
+        document.getElementById('sub-create-form').reset();
+        loadSubscriptions();
+        loadHistory();
+    } catch (error) {
+        errDiv.textContent = 'Error: ' + error.message;
+        errDiv.style.display = 'block';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadPlans();
+    loadSubscriptions();
+    loadHistory();
+});
+</script>
+{% endblock %}

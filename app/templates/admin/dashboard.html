@@ -21,6 +21,63 @@
             </form>
         </div>
         
+        <!-- PLATFORM OVERVIEW -->
+        <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #004400; border-radius: 5px; background: #000d00;">
+            <h3 style="color: #00ff41; margin: 0 0 15px 0;">PLATFORM OVERVIEW | نظرة عامة على المنصة</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <div class="stat-card" style="background: #001a00; border: 1px solid #00ff41; padding: 15px; border-radius: 5px; text-align: center;">
+                    <div id="ov-tenants" style="font-size: 24px; color: #00ff41; font-weight: bold;">--</div>
+                    <div style="font-size: 12px; color: #ccc;">Total Tenants | إجمالي المستأجرين</div>
+                    <a href="/admin/tenants" style="font-size: 11px; color: #00ff41;">[ View Tenants ]</a>
+                </div>
+                <div class="stat-card" style="background: #001a1a; border: 1px solid #00ffff; padding: 15px; border-radius: 5px; text-align: center;">
+                    <div id="ov-subs-active" style="font-size: 24px; color: #00ffff; font-weight: bold;">--</div>
+                    <div style="font-size: 12px; color: #ccc;">Active Subscriptions | اشتراكات نشطة</div>
+                </div>
+                <div id="ov-pending-card" class="stat-card" style="background: #001a00; border: 1px solid #00ff41; padding: 15px; border-radius: 5px; text-align: center;">
+                    <div id="ov-subs-pending" style="font-size: 24px; color: #00ff41; font-weight: bold;">--</div>
+                    <div style="font-size: 12px; color: #ccc;">Pending Approvals | بانتظار الموافقة</div>
+                    <a href="/admin/subscriptions" style="font-size: 11px; color: #00ff41;">[ Review Approvals ]</a>
+                </div>
+                <div class="stat-card" style="background: #1a0000; border: 1px solid #ff4444; padding: 15px; border-radius: 5px; text-align: center;">
+                    <div id="ov-suspended" style="font-size: 24px; color: #ff4444; font-weight: bold;">--</div>
+                    <div style="font-size: 12px; color: #ccc;">Suspended Tenants | مستأجرون موقوفون</div>
+                </div>
+            </div>
+            <div id="overview-error" style="display: none; color: #ff4444; font-size: 12px; margin-bottom: 10px;">Overview unavailable | تعذر تحميل النظرة العامة</div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="/admin/tenants" class="btn" style="font-size: 12px;">[ TENANTS ]</a>
+                <a href="/admin/subscriptions" class="btn" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
+                <a href="/admin/plans" class="btn" style="font-size: 12px;">[ PLANS ]</a>
+                <a href="/admin/activity" class="btn" style="font-size: 12px;">[ ACTIVITY ]</a>
+            </div>
+        </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/admin/api/overview')
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then(function(d) {
+                    document.getElementById('ov-tenants').textContent = (d.tenants_total !== undefined && d.tenants_total !== null) ? d.tenants_total : 'N/A';
+                    document.getElementById('ov-subs-active').textContent = (d.subs_active !== undefined && d.subs_active !== null) ? d.subs_active : 'N/A';
+                    document.getElementById('ov-subs-pending').textContent = (d.subs_pending !== undefined && d.subs_pending !== null) ? d.subs_pending : 'N/A';
+                    document.getElementById('ov-suspended').textContent = (d.tenants_suspended !== undefined && d.tenants_suspended !== null) ? d.tenants_suspended : 'N/A';
+                    if (d.subs_pending && Number(d.subs_pending) > 0) {
+                        var card = document.getElementById('ov-pending-card');
+                        card.style.borderColor = '#ffaa00';
+                        card.style.background = '#1a0d00';
+                        document.getElementById('ov-subs-pending').style.color = '#ffaa00';
+                    }
+                })
+                .catch(function() {
+                    document.getElementById('ov-tenants').textContent = 'N/A';
+                    document.getElementById('ov-subs-active').textContent = 'N/A';
+                    document.getElementById('ov-subs-pending').textContent = 'N/A';
+                    document.getElementById('ov-suspended').textContent = 'N/A';
+                    document.getElementById('overview-error').style.display = 'block';
+                });
+        });
+        </script>
+        
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
             <div class="stat-card" style="background: #001a00; border: 1px solid #00ff41; padding: 15px; border-radius: 5px; text-align: center;">
                 <div style="font-size: 24px; color: #00ff41; font-weight: bold;">{{ stats.total_users }}</div>

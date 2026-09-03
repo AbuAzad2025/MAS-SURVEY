@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - Tenant Management{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        [ T E N A N T &nbsp; M A N A G E M E N T ]
+    </div>
+
+    <div class="card-body">
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #004400; flex-wrap: wrap;">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="font-size: 12px;">[ DASHBOARD ]</a>
+            <a href="/admin/tenants" class="btn btn-primary" style="font-size: 12px;">[ TENANTS ]</a>
+            <a href="/admin/subscriptions" class="btn" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
+            <a href="/admin/plans" class="btn" style="font-size: 12px;">[ PLANS ]</a>
+            <a href="/admin/activity" class="btn" style="font-size: 12px;">[ ACTIVITY ]</a>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="color: #00ff41; margin: 0;">إدارة المستأجرين</h3>
+            <label style="font-size: 12px; color: #ccc;">
+                Status:
+                <select id="status-filter" class="form-control" style="display: inline-block; width: auto; margin-left: 8px;" onchange="filterTenants()">
+                    <option value="all">All</option>
+                    <option value="active">Active / نشط</option>
+                    <option value="suspended">Suspended / موقوف</option>
+                </select>
+            </label>
+        </div>
+
+        <div id="tenants-error" style="color: #ff4444; margin-bottom: 10px; display: none;"></div>
+
+        <div class="table-responsive">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Tenant</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Owner</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Plan</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Status</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Expires</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Files</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Points</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tenants-body">
+                    <tr><td colspan="8" style="border:1px solid #004400;padding:12px;text-align:center;color:#888;">Loading... جار التحميل</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allTenants = [];
+
+function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function loadTenants() {
+    fetch('/admin/api/tenants')
+        .then(r => r.json())
+        .then(data => {
+            allTenants = Array.isArray(data) ? data : [];
+            renderTenants();
+        })
+        .catch(err => {
+            const e = document.getElementById('tenants-error');
+            e.textContent = 'Error: ' + err.message;
+            e.style.display = 'block';
+        });
+}
+
+function renderTenants() {
+    const filter = document.getElementById('status-filter').value;
+    const body = document.getElementById('tenants-body');
+    body.innerHTML = '';
+
+    const rows = allTenants.filter(t => {
+        if (filter === 'active') return !t.is_suspended;
+        if (filter === 'suspended') return !!t.is_suspended;
+        return true;
+    });
+
+    if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="8" style="border:1px solid #004400;padding:12px;text-align:center;color:#888;">No tenants found / لا توجد نتائج</td></tr>';
+        return;
+    }
+
+    rows.forEach(t => {
+        const suspended = !!t.is_suspended;
+        const sub = t.active_subscription || null;
+        const plan = sub ? (sub.plan_name || t.plan || '-') : (t.plan || '-');
+        const expires = sub ? (sub.end_date || t.expires_at || '-') : (t.expires_at || '-');
+        const tr = document.createElement('tr');
+        if (suspended) {
+            tr.style.background = '#1a0000';
+        }
+        tr.innerHTML =
+            '<td style="border:1px solid #004400;padding:6px;"><strong>' + esc(t.name) + '</strong><br><span style="color:#888;">#' + t.id + '</span></td>' +
+            '<td style="border:1px solid #004400;padding:6px;">' + esc(t.owner_username || '-') + '</td>' +
+            '<td style="border:1px solid #004400;padding:6px;">' + esc(plan) + '</td>' +
+            '<td style="border:1px solid #004400;padding:6px;"><span style="padding:2px 8px;border-radius:3px;font-size:11px;' +
+                (suspended ? 'background:#1a0000;color:#ff4444;"' : 'background:#001a00;color:#00ff41;"') + '>' +
+                (suspended ? 'موقوف' : 'نشط') + '</span></td>' +
+            '<td style="border:1px solid #004400;padding:6px;">' + esc(expires) + '</td>' +
+            '<td style="border:1px solid #004400;padding:6px;">' + (t.files_count || 0) + '</td>' +
+            '<td style="border:1px solid #004400;padding:6px;">' + (t.points_count || 0) + '</td>' +
+            '<td style="border:1px solid #004400;padding:6px;"><div style="display:flex;gap:5px;">' +
+                '<a href="/admin/tenants/' + t.id + '" class="btn" style="padding:4px 8px;font-size:11px;">View</a>' +
+                (suspended
+                    ? '<button onclick="unsuspendTenant(' + t.id + ')" class="btn" style="padding:4px 8px;font-size:11px;background:#00ff44;">Unsuspend</button>'
+                    : '<button onclick="suspendTenant(' + t.id + ')" class="btn" style="padding:4px 8px;font-size:11px;background:#ff4444;">Suspend</button>') +
+            '</div></td>';
+        body.appendChild(tr);
+    });
+}
+
+function filterTenants() {
+    renderTenants();
+}
+
+function suspendTenant(id) {
+    if (!confirm('Suspend this tenant? تعليق هذا المستأجر؟')) return;
+    fetch('/admin/api/tenants/' + id + '/suspend', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        })
+        .catch(err => alert('Error: ' + err.message));
+}
+
+function unsuspendTenant(id) {
+    if (!confirm('Unsuspend this tenant? إلغاء تعليق هذا المستأجر؟')) return;
+    fetch('/admin/api/tenants/' + id + '/unsuspend', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        })
+        .catch(err => alert('Error: ' + err.message));
+}
+
+loadTenants();
+</script>
+{% endblock %}

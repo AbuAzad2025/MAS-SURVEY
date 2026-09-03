@@ -39,6 +39,10 @@ def app():
         db.session.add(TenantUser(tenant_id=tenant.id, user_id=admin.id, role='owner'))
         db.session.commit()
 
+        # Reseed billing plans: create_app() seeds before drop_all() wipes them.
+        from app.shared.models import seed_default_plans
+        seed_default_plans()
+
     return app
 
 

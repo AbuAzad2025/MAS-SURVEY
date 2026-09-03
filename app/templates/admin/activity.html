@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - Activity Log{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        [ A C T I V I T Y &nbsp; L O G ]
+    </div>
+
+    <div class="card-body">
+        <!-- Admin Navigation -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #004400; flex-wrap: wrap;">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="font-size: 12px;">[ DASHBOARD ]</a>
+            <a href="{{ url_for('admin.admin_files') }}" class="btn" style="font-size: 12px;">[ FILES ]</a>
+            <a href="{{ url_for('admin.admin_settings') }}" class="btn" style="font-size: 12px;">[ SETTINGS ]</a>
+            <a href="{{ url_for('admin.admin_logs') }}" class="btn" style="font-size: 12px;">[ LOGS ]</a>
+            <a href="{{ url_for('activity.activity_page') }}" class="btn btn-primary" style="font-size: 12px;">[ ACTIVITY ]</a>
+            <a href="{{ url_for('main.mas_menu') }}" class="btn" style="font-size: 12px;">[ MAS MENU ]</a>
+            <form action="{{ url_for('auth.logout') }}" method="POST" style="margin: 0;">
+                <button type="submit" class="btn" style="font-size: 12px; background: #1a0000; border-color: #ff4444;">[ LOGOUT ]</button>
+            </form>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="color: #00ff41;">Activity Log</h3>
+            <div>
+                <input id="action-filter" class="form-control" style="width: auto; display: inline-block;" placeholder="Filter by action..." />
+                <button onclick="reloadActivity()" class="btn">[ RELOAD ]</button>
+            </div>
+        </div>
+
+        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="data-table" id="activity-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Entity</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="activity-tbody">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #888;">Loading activity...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function escapeHtml(v) {
+    if (v == null || v === '') return '---';
+    return String(v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+async function reloadActivity() {
+    const tbody = document.getElementById('activity-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888;">Loading...</td></tr>';
+
+    const action = document.getElementById('action-filter').value.trim();
+
+    try {
+        const url = '/admin/api/activity?limit=100' + (action ? '&action=' + encodeURIComponent(action) : '');
+        const response = await fetch(url);
+        const data = await response.json();
+
+        tbody.innerHTML = '';
+        if (data.logs && data.logs.length > 0) {
+            data.logs.forEach(log => {
+                const row = document.createElement('tr');
+                const entity = [log.entity_type, log.entity_id].filter((x) => x != null && x !== '').join(' #');
+                row.innerHTML = `
+                    <td>${escapeHtml(log.created_at)}</td>
+                    <td>${escapeHtml(log.username)}</td>
+                    <td>${escapeHtml(log.action)}</td>
+                    <td>${escapeHtml(entity || '---')}</td>
+                    <td>${escapeHtml(log.details)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888;">No activity found</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading activity:', error);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #ff4444;">Error loading activity</td></tr>';
+    }
+}
+
+// Initial load
+document.addEventListener('DOMContentLoaded', () => {
+    reloadActivity();
+});
+</script>
+{% endblock %}

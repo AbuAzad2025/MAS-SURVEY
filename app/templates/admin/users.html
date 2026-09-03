@@ -9,7 +9,7 @@
     </div>
 
     <div class="card-body">
-        <div style="display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #004400; flex-wrap: wrap;">
+        <div style="display: flex; gap: 10px; margin-bottom: 10px; padding-bottom: 15px; border-bottom: 1px solid #004400; flex-wrap: wrap;">
             <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="font-size: 12px;">[ DASHBOARD ]</a>
             <a href="{{ url_for('admin.admin_users') }}" class="btn btn-primary" style="font-size: 12px;">[ USERS ]</a>
             <a href="{{ url_for('admin.admin_files') }}" class="btn" style="font-size: 12px;">[ FILES ]</a>
@@ -17,6 +17,46 @@
             <a href="{{ url_for('admin.admin_logs') }}" class="btn" style="font-size: 12px;">[ LOGS ]</a>
             <a href="{{ url_for('main.mas_menu') }}" class="btn" style="font-size: 12px;">[ MAS MENU ]</a>
         </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #004400; flex-wrap: wrap;">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="font-size: 12px;">[ DASHBOARD ]</a>
+            <a href="/admin/tenants" class="btn" style="font-size: 12px;">[ TENANTS ]</a>
+            <a href="/admin/subscriptions" class="btn" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
+            <a href="/admin/plans" class="btn" style="font-size: 12px;">[ PLANS ]</a>
+            <a href="/admin/activity" class="btn" style="font-size: 12px;">[ ACTIVITY ]</a>
+        </div>
+
+        <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #004400; background: #001a00;">
+            <h3 style="color: #00ff41; font-size: 14px; margin: 0 0 12px 0;">[ CREATE USER ]</h3>
+            <form id="create-user-form" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+                <label style="display: flex; flex-direction: column; font-size: 12px; color: #00ff41;">Username
+                    <input type="text" name="username" required style="background: #000; color: #00ff41; border: 1px solid #004400; padding: 6px;" />
+                </label>
+                <label style="display: flex; flex-direction: column; font-size: 12px; color: #00ff41;">Password
+                    <input type="password" name="password" required minlength="6" style="background: #000; color: #00ff41; border: 1px solid #004400; padding: 6px;" />
+                </label>
+                <label style="display: flex; flex-direction: column; font-size: 12px; color: #00ff41;">Role
+                    <select name="role" style="background: #000; color: #00ff41; border: 1px solid #004400; padding: 6px;">
+                        <option value="super_admin">super_admin</option>
+                        <option value="registered" selected>registered</option>
+                        <option value="guest">guest</option>
+                    </select>
+                </label>
+                <label style="display: flex; flex-direction: column; font-size: 12px; color: #00ff41;">Full Name
+                    <input type="text" name="full_name" style="background: #000; color: #00ff41; border: 1px solid #004400; padding: 6px;" />
+                </label>
+                <label style="display: flex; flex-direction: column; font-size: 12px; color: #00ff41;">Email
+                    <input type="email" name="email" style="background: #000; color: #00ff41; border: 1px solid #004400; padding: 6px;" />
+                </label>
+                <label style="display: flex; flex-direction: column; font-size: 12px; color: #00ff41;">Phone
+                    <input type="text" name="phone" style="background: #000; color: #00ff41; border: 1px solid #004400; padding: 6px;" />
+                </label>
+                <button type="submit" class="btn btn-primary" style="font-size: 12px;">[ CREATE ]</button>
+            </form>
+            <div id="create-user-msg" style="font-size: 12px; margin-top: 10px; color: #00ff41;"></div>
+        </div>
+
+        <div id="user-action-msg" style="font-size: 12px; margin-bottom: 12px; color: #00ff41;"></div>
 
         <div class="table-responsive">
             <table style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -29,11 +69,13 @@
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Email</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Active</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Last Login</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Tenant</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for u in users %}
-                    <tr>
+                    <tr data-user-id="{{ u.id }}" data-username="{{ u.username|e }}" data-is-active="{{ 1 if u.is_active else 0 }}">
                         <td style="border:1px solid #004400;padding:6px;">{{ u.id }}</td>
                         <td style="border:1px solid #004400;padding:6px;">{{ u.username }}</td>
                         <td style="border:1px solid #004400;padding:6px;">{{ u.full_name or '-' }}</td>
@@ -41,6 +83,15 @@
                         <td style="border:1px solid #004400;padding:6px;">{{ u.email or '-' }}</td>
                         <td style="border:1px solid #004400;padding:6px;">{{ 'Yes' if u.is_active else 'No' }}</td>
                         <td style="border:1px solid #004400;padding:6px;">{{ u.last_login or '-' }}</td>
+                        <td style="border:1px solid #004400;padding:6px;" class="tenant-cell">-</td>
+                        <td style="border:1px solid #004400;padding:6px;white-space:nowrap;">
+                            <button type="button" class="btn" style="font-size: 11px; padding: 3px 8px;" onclick="resetUserPassword({{ u.id }}, '{{ u.username|e }}')">[ RESET PW ]</button>
+                            {% if u.is_active %}
+                            <button type="button" class="btn" style="font-size: 11px; padding: 3px 8px;" onclick="toggleUserActive({{ u.id }}, true, '{{ u.username|e }}')">[ DEACTIVATE ]</button>
+                            {% else %}
+                            <button type="button" class="btn" style="font-size: 11px; padding: 3px 8px;" onclick="toggleUserActive({{ u.id }}, false, '{{ u.username|e }}')">[ ACTIVATE ]</button>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -48,4 +99,140 @@
         </div>
     </div>
 </div>
+
+<script>
+function showUserMsg(text, isError) {
+    var el = document.getElementById('user-action-msg');
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = isError ? '#ff5555' : '#00ff41';
+}
+function showCreateMsg(text, isError) {
+    var el = document.getElementById('create-user-msg');
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = isError ? '#ff5555' : '#00ff41';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Join tenants client-side by owner_username -> /admin/tenants/<id>
+    fetch('/admin/api/tenants', { headers: { 'Accept': 'application/json' } })
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) {
+            var list = Array.isArray(data) ? data : (data.tenants || data.items || []);
+            var byOwner = {};
+            list.forEach(function (t) {
+                if (t && t.owner_username) byOwner[t.owner_username] = t;
+            });
+            document.querySelectorAll('tr[data-user-id]').forEach(function (row) {
+                var cell = row.querySelector('.tenant-cell');
+                if (!cell) return;
+                var username = row.getAttribute('data-username');
+                var t = byOwner[username];
+                if (t && t.id) {
+                    var a = document.createElement('a');
+                    a.href = '/admin/tenants/' + t.id;
+                    a.textContent = t.name || ('Tenant ' + t.id);
+                    a.style.color = '#00ff41';
+                    cell.textContent = '';
+                    cell.appendChild(a);
+                } else {
+                    cell.textContent = '-';
+                }
+            });
+        })
+        .catch(function (err) {
+            document.querySelectorAll('.tenant-cell').forEach(function (c) { c.textContent = '-'; });
+        });
+
+    // Create user form -> POST /admin/api/users
+    var form = document.getElementById('create-user-form');
+    if (form) {
+        form.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            var fd = new FormData(form);
+            var payload = {
+                username: (fd.get('username') || '').toString().trim(),
+                password: (fd.get('password') || '').toString(),
+                role: (fd.get('role') || 'registered').toString(),
+                full_name: (fd.get('full_name') || '').toString().trim(),
+                email: (fd.get('email') || '').toString().trim(),
+                phone: (fd.get('phone') || '').toString().trim()
+            };
+            if (!payload.username || !payload.password) {
+                showCreateMsg('Username and password required.', true);
+                return;
+            }
+            if (!confirm('Create user "' + payload.username + '"?')) return;
+            showCreateMsg('Creating user...', false);
+            fetch('/admin/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(function (resp) { return resp.json().then(function (body) { return { ok: resp.ok, body: body }; }); })
+                .then(function (result) {
+                    if (!result.ok) {
+                        showCreateMsg('Error: ' + (result.body.error || JSON.stringify(result.body)), true);
+                        return;
+                    }
+                    showCreateMsg('User created: ' + ((result.body.user && result.body.user.username) || payload.username), false);
+                    setTimeout(function () { window.location.reload(); }, 800);
+                })
+                .catch(function (err) {
+                    showCreateMsg('Error: ' + err.message, true);
+                });
+        });
+    }
+});
+
+function resetUserPassword(userId, username) {
+    var pw = prompt('Enter new password for "' + username + '" (min 6 chars):');
+    if (pw === null) return;
+    if (pw.length < 6) {
+        showUserMsg('Error: Password must be at least 6 characters.', true);
+        return;
+    }
+    if (!confirm('Reset password for "' + username + '"?')) return;
+    fetch('/admin/api/users/' + userId + '/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_password: pw })
+    })
+        .then(function (resp) { return resp.json().then(function (body) { return { ok: resp.ok, body: body }; }); })
+        .then(function (result) {
+            if (!result.ok) {
+                showUserMsg('Error: ' + (result.body.error || JSON.stringify(result.body)), true);
+                return;
+            }
+            showUserMsg('Password reset for "' + username + '".', false);
+        })
+        .catch(function (err) {
+            showUserMsg('Error: ' + err.message, true);
+        });
+}
+
+function toggleUserActive(userId, isCurrentlyActive, username) {
+    var newState = !isCurrentlyActive;
+    var action = newState ? 'Activate' : 'Deactivate';
+    if (!confirm(action + ' user "' + username + '"?')) return;
+    fetch('/admin/api/users/' + userId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: newState })
+    })
+        .then(function (resp) { return resp.json().then(function (body) { return { ok: resp.ok, body: body }; }); })
+        .then(function (result) {
+            if (!result.ok) {
+                showUserMsg('Error: ' + (result.body.error || JSON.stringify(result.body)), true);
+                return;
+            }
+            showUserMsg('User "' + username + '" ' + (newState ? 'activated.' : 'deactivated.'), false);
+            setTimeout(function () { window.location.reload(); }, 800);
+        })
+        .catch(function (err) {
+            showUserMsg('Error: ' + err.message, true);
+        });
+}
+</script>
 {% endblock %}

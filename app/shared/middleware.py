@@ -95,6 +95,97 @@ def super_admin_required(f):
     return wrapper
 
 
+# --- plan / subscription guards -------------------------------------------
+
+_FALLBACK_LIMITS = {'max_files': 5, 'max_points': 500, 'max_users': 1}
+
+
+def get_plan_limits(plan_name) -> dict:
+    """Return {max_files, max_points, max_users} for a plan name.
+
+    Queries Plan by name+is_active. Returns fallback
+    {'max_files': 5, 'max_points': 500, 'max_users': 1} on any error,
+    missing Plan model, or plan not found. -1 means unlimited.
+    """
+    fallback = dict(_FALLBACK_LIMITS)
+    try:
+        name = (plan_name or 'free')
+        # Normalize to string
+        try:
+            name = str(name).strip() or 'free'
+        except Exception:
+            name = 'free'
+        Plan = None
+        try:
+            from .models.billing import Plan as _Plan  # type: ignore
+            Plan = _Plan
+        except Exception:
+            try:
+                from app.shared.models.billing import Plan as _Plan2  # type: ignore
+                Plan = _Plan2
+            except Exception:
+                return fallback
+        if Plan is None:
+            return fallback
+        try:
+            if Plan.query.count() == 0:
+                try:
+                    from .models.billing import seed_default_plans as _seed
+                    _seed()
+                except Exception:
+                    try:
+                        from app.shared.models.billing import seed_default_plans as _seed2
+                        _seed2()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        plan = Plan.query.filter_by(name=name, is_active=True).first()
+        if plan is None:
+            return fallback
+        return {
+            'max_files': getattr(plan, 'max_files', fallback['max_files']),
+            'max_points': getattr(plan, 'max_points', fallback['max_points']),
+            'max_users': getattr(plan, 'max_users', fallback['max_users']),
+        }
+    except Exception:
+        return fallback
+
+
+def tenant_block_reason(tenant):
+    """Return None if tenant may proceed, else block reason.
+
+    - None tenant -> 'no_tenant'
+    - getattr(tenant, 'is_suspended', False) truthy -> 'suspended'
+    - plan name != 'free' and expires_at and expires_at < utcnow -> 'expired'
+    - free plan never expires
+    """
+    try:
+        if tenant is None:
+            return 'no_tenant'
+        if getattr(tenant, 'is_suspended', False):
+            return 'suspended'
+        try:
+            raw_plan = getattr(tenant, 'plan', None) or 'free'
+            plan_name = str(raw_plan).strip().lower() or 'free'
+        except Exception:
+            plan_name = 'free'
+        if plan_name == 'free':
+            return None
+        expires_at = getattr(tenant, 'expires_at', None)
+        if expires_at is None:
+            return None
+        try:
+            from datetime import datetime as _dt
+            if expires_at < _dt.utcnow():
+                return 'expired'
+        except Exception:
+            return None
+        return None
+    except Exception:
+        return None
+
+
 # --- bootstrap ----------------------------------------------------------
 
 def ensure_super_admin() -> None:

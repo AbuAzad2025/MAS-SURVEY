@@ -6,7 +6,10 @@ from flask import (Blueprint, render_template, session, redirect, url_for,
                    request, abort)
 
 from app.shared.models import db, SurveyFile, SurveyPoint
-from app.shared.middleware import login_required, get_current_tenant
+from app.shared.middleware import (
+    login_required, get_current_tenant,
+    get_plan_limits, tenant_block_reason,
+)
 
 # __file__ = app/programs/mas/routes/files.py
 MAS_TEMPLATES = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates')
@@ -37,14 +40,42 @@ def new_file():
         if not name:
             return render_template('error.html', message='File name is required')
 
+        tenant = get_current_tenant()
+        reason = tenant_block_reason(tenant)
+        if reason == 'suspended':
+            return render_template(
+                'error.html', message='Account suspended, contact platform owner')
+        if reason == 'expired':
+            return render_template(
+                'error.html', message='Subscription expired, please renew')
+        if reason == 'no_tenant':
+            return render_template('error.html', message='No tenant found')
+        if tenant is None:
+            return render_template('error.html', message='No tenant found')
+
+        try:
+            limits = get_plan_limits(getattr(tenant, 'plan', 'free'))
+            max_files = limits.get('max_files', 5)
+        except Exception:
+            max_files = 5
+        if max_files is not None and max_files >= 0:
+            try:
+                files_count = SurveyFile.query.filter_by(
+                    tenant_id=tenant.id).count()
+            except Exception:
+                files_count = 0
+            if files_count >= max_files:
+                return render_template(
+                    'error.html', message='Plan file limit reached')
+
         existing = SurveyFile.query.filter_by(
-            tenant_id=get_current_tenant().id, name=name
+            tenant_id=tenant.id, name=name
         ).first()
         if existing:
             return render_template('error.html', message='File already exists')
 
         f = SurveyFile(
-            tenant_id=get_current_tenant().id,
+            tenant_id=tenant.id,
             name=name, date=date, place=place,
         )
         db.session.add(f)

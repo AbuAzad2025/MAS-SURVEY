@@ -13,6 +13,7 @@ from app.services.calculator import CalculatorService, SurveyingError
 from app.shared.models import db, SurveyFile, SurveyPoint, Settings
 from app.shared.middleware import (
     login_required, get_current_user, get_current_tenant,
+    get_plan_limits, tenant_block_reason,
 )
 
 
@@ -96,8 +97,31 @@ def settings_endpoint():
 @api_bp.route('/files', methods=['GET', 'POST'])
 @login_required
 def files_list():
-    tenant_id = get_current_tenant().id
+    tenant = get_current_tenant()
+    if tenant is None:
+        return _error('No tenant found', 403)
+    tenant_id = tenant.id
     if request.method == 'POST':
+        reason = tenant_block_reason(tenant)
+        if reason == 'suspended':
+            return _error('Account suspended, contact platform owner', 403)
+        if reason == 'expired':
+            return _error('Subscription expired, please renew', 400)
+        if reason == 'no_tenant':
+            return _error('No tenant found', 403)
+        try:
+            limits = get_plan_limits(getattr(tenant, 'plan', 'free'))
+            max_files = limits.get('max_files', 5)
+        except Exception:
+            max_files = 5
+        if max_files is not None and max_files >= 0:
+            try:
+                files_count = SurveyFile.query.filter_by(
+                    tenant_id=tenant.id).count()
+            except Exception:
+                files_count = 0
+            if files_count >= max_files:
+                return _error('Plan file limit reached', 400)
         data = request.json or {}
         name = (data.get('name') or '').strip()
         if not name:
@@ -267,7 +291,15 @@ def get_points():
 @api_bp.route('/points', methods=['POST'])
 @login_required
 def save_points():
-    tenant_id = get_current_tenant().id
+    tenant = get_current_tenant()
+    if tenant is None:
+        return _error('No tenant found', 403)
+    tenant_id = tenant.id
+    reason = tenant_block_reason(tenant)
+    if reason == 'suspended':
+        return _error('Account suspended, contact platform owner', 403)
+    if reason == 'no_tenant':
+        return _error('No tenant found', 403)
     fid = _current_file_id()
     if not fid:
         return _error('No file selected')
@@ -277,6 +309,38 @@ def save_points():
     f = SurveyFile.query.get(fid)
     if not f:
         return _error('No file selected')
+
+    # Plan points cap: total_after = existing count + new unique point_nos
+    # not already present. -1 (or negative) means unlimited.
+    try:
+        limits = get_plan_limits(getattr(tenant, 'plan', 'free'))
+        max_points = limits.get('max_points', 500)
+    except Exception:
+        max_points = 500
+    if max_points is not None and max_points >= 0:
+        try:
+            existing_count = SurveyPoint.query.filter_by(file_id=fid).count()
+        except Exception:
+            existing_count = 0
+        try:
+            existing_rows = SurveyPoint.query.filter_by(
+                file_id=fid).with_entities(SurveyPoint.point_no).all()
+            existing_nos = {r[0] for r in existing_rows}
+        except Exception:
+            existing_nos = set()
+        incoming_nos = set()
+        for p in new_points:
+            try:
+                no = p.get('no') if p.get('no') is not None else p.get('point_no')
+            except Exception:
+                continue
+            if no is None:
+                continue
+            incoming_nos.add(no)
+        new_unique = len(incoming_nos - existing_nos)
+        total_after = existing_count + new_unique
+        if total_after > max_points:
+            return _error('Plan points limit reached', 400)
 
     # Append/upsert strategy (back-compat): insert new numbers, update existing.
     for p in new_points:

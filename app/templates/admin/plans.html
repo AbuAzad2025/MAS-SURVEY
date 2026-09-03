@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}MAS - Plan Management{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        [ P L A N S ]
+    </div>
+
+    <div class="card-body">
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #004400; flex-wrap: wrap;">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="font-size: 12px;">[ DASHBOARD ]</a>
+            <a href="{{ url_for('admin.admin_users') }}" class="btn" style="font-size: 12px;">[ USERS ]</a>
+            <a href="{{ url_for('admin.admin_files') }}" class="btn" style="font-size: 12px;">[ FILES ]</a>
+            <a href="{{ url_for('admin.admin_settings') }}" class="btn" style="font-size: 12px;">[ SETTINGS ]</a>
+            <a href="{{ url_for('admin.admin_logs') }}" class="btn" style="font-size: 12px;">[ LOGS ]</a>
+            <a href="/admin/subscriptions" class="btn" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
+            <a href="/admin/plans" class="btn btn-primary" style="font-size: 12px;">[ PLANS ]</a>
+            <a href="{{ url_for('main.mas_menu') }}" class="btn" style="font-size: 12px;">[ MAS MENU ]</a>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="color: #00ff41; margin: 0;">Plans | الخطط</h3>
+            <button onclick="loadPlans()" class="btn" style="font-size: 12px;">[ REFRESH ]</button>
+        </div>
+        <div class="table-responsive" style="margin-bottom: 25px;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">ID</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Name</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Description</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Price</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Duration (days)</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Max Files</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Max Points</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Max Users</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Active</th>
+                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="plans-body">
+                    <tr><td colspan="10" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3 style="color: #00ff41;">Create Plan | خطة جديدة</h3>
+        <div class="dos-box">
+            <div class="dos-header">New Plan (use -1 for unlimited | استخدم -1 لغير المحدود)</div>
+            <form id="plan-create-form">
+                <div class="form-group">
+                    <label>Name *</label>
+                    <input type="text" id="plan-name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="plan-description" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Price *</label>
+                    <input type="number" id="plan-price" class="form-control" step="0.01" min="0" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Duration (days) *</label>
+                    <input type="number" id="plan-duration" class="form-control" step="1" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Max Files (-1 = ∞)</label>
+                    <input type="number" id="plan-max-files" class="form-control" step="1" value="-1">
+                </div>
+                <div class="form-group">
+                    <label>Max Points (-1 = ∞)</label>
+                    <input type="number" id="plan-max-points" class="form-control" step="1" value="-1">
+                </div>
+                <div class="form-group">
+                    <label>Max Users (-1 = ∞)</label>
+                    <input type="number" id="plan-max-users" class="form-control" step="1" value="-1">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="plan-is-active" checked> Active
+                    </label>
+                </div>
+                <div id="plan-create-error" style="color: #ff4444; margin-bottom: 10px; display: none;"></div>
+                <button type="submit" class="btn btn-primary">[ CREATE PLAN ]</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let plansCache = [];
+
+function esc(v) {
+    if (v === null || v === undefined) return '-';
+    return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function lim(v) {
+    return (v === -1 || v === '-1') ? '\u221E' : esc(v);
+}
+
+async function loadPlans() {
+    const body = document.getElementById('plans-body');
+    try {
+        const r = await fetch('/admin/api/plans');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        const list = Array.isArray(data) ? data : (data.plans || []);
+        plansCache = list;
+        if (!list.length) {
+            body.innerHTML = '<tr><td colspan="10" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">No plans | لا توجد خطط</td></tr>';
+            return;
+        }
+        body.innerHTML = list.map(function(p) {
+            const active = p.is_active
+                ? '<span style="color:#00ff41;font-weight:bold;">Yes | نعم</span>'
+                : '<span style="color:#ff4444;font-weight:bold;">No | لا</span>';
+            const deactivateBtn = p.is_active
+                ? '<button onclick="deactivatePlan(' + p.id + ')" class="btn" style="padding:4px 8px;font-size:11px;background:#1a0000;border-color:#ff4444;">Deactivate</button>'
+                : '';
+            return '<tr>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(p.id) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;"><strong>' + esc(p.name) + '</strong></td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(p.description) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(p.price) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + esc(p.duration_days) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + lim(p.max_files) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + lim(p.max_points) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + lim(p.max_users) + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;">' + active + '</td>' +
+                '<td style="border:1px solid #004400;padding:6px;white-space:nowrap;">' +
+                    '<button onclick="editPlan(' + p.id + ')" class="btn" style="padding:4px 8px;font-size:11px;">Edit</button> ' +
+                    deactivateBtn +
+                '</td></tr>';
+        }).join('');
+    } catch (e) {
+        body.innerHTML = '<tr><td colspan="10" style="border:1px solid #004400;padding:6px;text-align:center;color:#ff4444;">Failed to load | تعذر التحميل</td></tr>';
+    }
+}
+
+function editPlan(id) {
+    const p = plansCache.find(function(x) { return x.id === id; });
+    if (!p) { alert('Plan not found in cache, refreshing...'); loadPlans(); return; }
+    const name = prompt('Name | الاسم:', p.name);
+    if (name === null) return;
+    const description = prompt('Description | الوصف:', p.description || '');
+    if (description === null) return;
+    const price = prompt('Price | السعر:', p.price);
+    if (price === null) return;
+    const duration = prompt('Duration (days) | المدة (أيام):', p.duration_days);
+    if (duration === null) return;
+    const maxFiles = prompt('Max Files (-1 = unlimited) | أقصى ملفات:', p.max_files);
+    if (maxFiles === null) return;
+    const maxPoints = prompt('Max Points (-1 = unlimited) | أقصى نقاط:', p.max_points);
+    if (maxPoints === null) return;
+    const maxUsers = prompt('Max Users (-1 = unlimited) | أقصى مستخدمين:', p.max_users);
+    if (maxUsers === null) return;
+    const data = {
+        name: name,
+        description: description,
+        price: parseFloat(price),
+        duration_days: parseInt(duration, 10),
+        max_files: parseInt(maxFiles, 10),
+        max_points: parseInt(maxPoints, 10),
+        max_users: parseInt(maxUsers, 10)
+    };
+    fetch('/admin/api/plans/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, body: j }; }); })
+    .then(function(res) {
+        if (!res.ok || res.body.error) {
+            alert('Error: ' + (res.body.error || 'update failed'));
+            return;
+        }
+        loadPlans();
+    })
+    .catch(function(e) { alert('Error: ' + e.message); });
+}
+
+async function deactivatePlan(id) {
+    if (id === 1 && !confirm('WARNING: this is the seeded FREE plan (id 1). Deactivate anyway? | تحذير: هذه الخطة المجانية الأساسية. متابعة؟')) return;
+    else if (id !== 1 && !confirm('Deactivate plan #' + id + '? | تعطيل الخطة؟')) return;
+    try {
+        const r = await fetch('/admin/api/plans/' + id, { method: 'DELETE' });
+        const result = await r.json();
+        if (!r.ok || result.error) {
+            alert('Error: ' + (result.error || ('HTTP ' + r.status)));
+            return;
+        }
+        loadPlans();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+document.getElementById('plan-create-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const errDiv = document.getElementById('plan-create-error');
+    errDiv.style.display = 'none';
+    const data = {
+        name: document.getElementById('plan-name').value,
+        description: document.getElementById('plan-description').value || undefined,
+        price: parseFloat(document.getElementById('plan-price').value),
+        duration_days: parseInt(document.getElementById('plan-duration').value, 10),
+        max_files: parseInt(document.getElementById('plan-max-files').value, 10),
+        max_points: parseInt(document.getElementById('plan-max-points').value, 10),
+        max_users: parseInt(document.getElementById('plan-max-users').value, 10),
+        is_active: document.getElementById('plan-is-active').checked
+    };
+    try {
+        const r = await fetch('/admin/api/plans', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await r.json();
+        if (!r.ok || result.error) {
+            errDiv.textContent = result.error || ('HTTP ' + r.status);
+            errDiv.style.display = 'block';
+            return;
+        }
+        document.getElementById('plan-create-form').reset();
+        document.getElementById('plan-is-active').checked = true;
+        loadPlans();
+    } catch (error) {
+        errDiv.textContent = 'Error: ' + error.message;
+        errDiv.style.display = 'block';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', loadPlans);
+</script>
+{% endblock %}
