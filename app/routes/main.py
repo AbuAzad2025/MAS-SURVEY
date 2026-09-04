@@ -72,23 +72,24 @@ def user_guide():
         with open(guide_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        import re
-        html = content
-        html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
-        html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
-        html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
-        html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
-        html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
-        html = re.sub(r'\|(.+)\|', lambda m: '<tr>' + ''.join(f'<td>{c.strip()}</td>' for c in m.group(1).split('|')) + '</tr>', html)
-        html = re.sub(r'```[\s\S]*?```', lambda m: '<pre>' + m.group(0)[3:-3].strip() + '</pre>', html)
-        html = re.sub(r'`(.+?)`', r'<code>\1</code>', html)
-        html = re.sub(r'^---$', '<hr>', html, flags=re.MULTILINE)
-        html = re.sub(r'\n\n+', r'</p><p>', html)
-        html = '<p>' + html + '</p>'
-        html = html.replace('</p><h', '</p><h')
-        html = html.replace('</p><hr', '<hr')
-        html = html.replace('<hr>', '</p><hr><p>')
+        import re, html as html_mod
+        content = html_mod.escape(content)
+        html_out = content
+        html_out = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html_out, flags=re.MULTILINE)
+        html_out = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html_out, flags=re.MULTILINE)
+        html_out = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html_out, flags=re.MULTILINE)
+        html_out = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_out)
+        html_out = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html_out)
+        html_out = re.sub(r'\|(.+)\|', lambda m: '<tr>' + ''.join(f'<td>{c.strip()}</td>' for c in m.group(1).split('|')) + '</tr>', html_out)
+        html_out = re.sub(r'```[\s\S]*?```', lambda m: '<pre>' + m.group(0)[3:-3].strip() + '</pre>', html_out)
+        html_out = re.sub(r'`(.+?)`', r'<code>\1</code>', html_out)
+        html_out = re.sub(r'^---$', '<hr>', html_out, flags=re.MULTILINE)
+        html_out = re.sub(r'\n\n+', r'</p><p>', html_out)
+        html_out = '<p>' + html_out + '</p>'
+        html_out = html_out.replace('</p><h', '</p><h')
+        html_out = html_out.replace('</p><hr', '<hr')
+        html_out = html_out.replace('<hr>', '</p><hr><p>')
 
-        return render_template('guide.html', content=html)
+        return render_template('guide.html', content=html_out)
     except Exception as e:
         return f"Error loading guide: {str(e)}", 500

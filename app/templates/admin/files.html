@@ -37,8 +37,7 @@
                         <td>{{ file.no_of_points or 0 }}</td>
                         <td>{{ file.created_at or '---' }}</td>
                         <td>
-                            <a href="{{ url_for('files.view_file', name=file.name) }}" class="btn" style="padding: 4px 8px; font-size: 11px;">View</a>
-                            <a href="{{ url_for('main.print_preview') }}" class="btn" style="padding: 4px 8px; font-size: 11px; margin-left: 5px;">Print</a>
+                            <a href="{{ url_for('admin.admin_file_detail', file_id=file.id) }}" class="btn" style="padding: 4px 8px; font-size: 11px;">View</a>
                         </td>
                     </tr>
                     {% else %}

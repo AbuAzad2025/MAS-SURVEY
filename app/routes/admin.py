@@ -6,7 +6,7 @@ import sys
 import os
 from flask import Blueprint, request, jsonify, session, render_template
 
-from app.shared.models import db, User, Role, Tenant, SurveyFile, SystemLog
+from app.shared.models import db, User, Role, Tenant, SurveyFile, SurveyPoint, SystemLog
 from app.shared.middleware import super_admin_required
 
 
@@ -81,6 +81,29 @@ def admin_files():
         d['owner_username'] = owner_username
         payload.append(d)
     return render_template('admin/files.html', files=payload)
+
+
+@admin_bp.route('/files/<int:file_id>')
+@super_admin_required
+def admin_file_detail(file_id):
+    """Read-only file detail for any tenant (super admin)."""
+    f = db.session.get(SurveyFile, file_id)
+    if f is None:
+        return render_template('error.html', message='File not found'), 404
+    points = SurveyPoint.query.filter_by(
+        file_id=f.id
+    ).order_by(SurveyPoint.point_no).all()
+    owner_username = None
+    try:
+        tenant = db.session.get(Tenant, f.tenant_id)
+        if tenant is not None and getattr(tenant, 'owner_id', None):
+            owner = db.session.get(User, tenant.owner_id)
+            owner_username = owner.username if owner else None
+    except Exception:
+        owner_username = None
+    return render_template('admin/file_detail.html', file=f.to_dict(),
+                           points=[p.to_dict() for p in points],
+                           owner_username=owner_username)
 
 
 @admin_bp.route('/logs')

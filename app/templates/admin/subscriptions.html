@@ -15,8 +15,8 @@
             <a href="{{ url_for('admin.admin_files') }}" class="btn" style="font-size: 12px;">[ FILES ]</a>
             <a href="{{ url_for('admin.admin_settings') }}" class="btn" style="font-size: 12px;">[ SETTINGS ]</a>
             <a href="{{ url_for('admin.admin_logs') }}" class="btn" style="font-size: 12px;">[ LOGS ]</a>
-            <a href="/admin/subscriptions" class="btn btn-primary" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
-            <a href="/admin/plans" class="btn" style="font-size: 12px;">[ PLANS ]</a>
+            <a href="{{ url_for('owner.subscriptions_page') }}" class="btn btn-primary" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
+            <a href="{{ url_for('owner.plans_page') }}" class="btn" style="font-size: 12px;">[ PLANS ]</a>
             <a href="{{ url_for('main.mas_menu') }}" class="btn" style="font-size: 12px;">[ MAS MENU ]</a>
         </div>
 

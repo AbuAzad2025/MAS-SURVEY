@@ -28,7 +28,7 @@
                 <div class="stat-card" style="background: #001a00; border: 1px solid #00ff41; padding: 15px; border-radius: 5px; text-align: center;">
                     <div id="ov-tenants" style="font-size: 24px; color: #00ff41; font-weight: bold;">--</div>
                     <div style="font-size: 12px; color: #ccc;">Total Tenants | إجمالي المستأجرين</div>
-                    <a href="/admin/tenants" style="font-size: 11px; color: #00ff41;">[ View Tenants ]</a>
+                    <a href="{{ url_for('owner.tenants_page') }}" style="font-size: 11px; color: #00ff41;">[ View Tenants ]</a>
                 </div>
                 <div class="stat-card" style="background: #001a1a; border: 1px solid #00ffff; padding: 15px; border-radius: 5px; text-align: center;">
                     <div id="ov-subs-active" style="font-size: 24px; color: #00ffff; font-weight: bold;">--</div>
@@ -37,7 +37,7 @@
                 <div id="ov-pending-card" class="stat-card" style="background: #001a00; border: 1px solid #00ff41; padding: 15px; border-radius: 5px; text-align: center;">
                     <div id="ov-subs-pending" style="font-size: 24px; color: #00ff41; font-weight: bold;">--</div>
                     <div style="font-size: 12px; color: #ccc;">Pending Approvals | بانتظار الموافقة</div>
-                    <a href="/admin/subscriptions" style="font-size: 11px; color: #00ff41;">[ Review Approvals ]</a>
+                    <a href="{{ url_for('owner.subscriptions_page') }}" style="font-size: 11px; color: #00ff41;">[ Review Approvals ]</a>
                 </div>
                 <div class="stat-card" style="background: #1a0000; border: 1px solid #ff4444; padding: 15px; border-radius: 5px; text-align: center;">
                     <div id="ov-suspended" style="font-size: 24px; color: #ff4444; font-weight: bold;">--</div>
@@ -46,10 +46,10 @@
             </div>
             <div id="overview-error" style="display: none; color: #ff4444; font-size: 12px; margin-bottom: 10px;">Overview unavailable | تعذر تحميل النظرة العامة</div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <a href="/admin/tenants" class="btn" style="font-size: 12px;">[ TENANTS ]</a>
-                <a href="/admin/subscriptions" class="btn" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
-                <a href="/admin/plans" class="btn" style="font-size: 12px;">[ PLANS ]</a>
-                <a href="/admin/activity" class="btn" style="font-size: 12px;">[ ACTIVITY ]</a>
+                <a href="{{ url_for('owner.tenants_page') }}" class="btn" style="font-size: 12px;">[ TENANTS ]</a>
+                <a href="{{ url_for('owner.subscriptions_page') }}" class="btn" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
+                <a href="{{ url_for('owner.plans_page') }}" class="btn" style="font-size: 12px;">[ PLANS ]</a>
+                <a href="{{ url_for('activity.activity_page') }}" class="btn" style="font-size: 12px;">[ ACTIVITY ]</a>
             </div>
         </div>
         <script>
@@ -156,7 +156,7 @@
                             </span>
                         </td>
                         <td>{{ user.created_at or '---' }}</td>
-                        <td>{{ user.last_login or 'أبداً' }}</td>
+                        <td>{{ (user.last_login or 'أبداً')[:16] }}</td>
                         <td>
                             <div style="display: flex; gap: 5px;">
                                 {% if user.id != session.user_id %}

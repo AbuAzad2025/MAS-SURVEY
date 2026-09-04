@@ -32,7 +32,7 @@
                     <td>{{ file.no_of_points }}</td>
                     <td>
                         <a href="{{ url_for('files.view_file', name=file.name) }}" class="btn">[ VIEW ]</a>
-                        <button onclick="deleteFile('{{ file.name }}')" class="btn">[ DELETE ]</button>
+                        <button class="btn js-delete-file" data-name="{{ file.name }}">[ DELETE ]</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -48,9 +48,18 @@
 
 <script>
 function deleteFile(name) {
+    if (!confirm('Delete file "' + name + '" and all its points?')) return;
     MAS.deleteFile(name, function() {
         location.reload();
     });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.js-delete-file').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            deleteFile(btn.dataset.name);
+        });
+    });
+});
 </script>
 {% endblock %}

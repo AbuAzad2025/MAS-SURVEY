@@ -41,10 +41,10 @@
                     <tr>
                         <th>Time</th>
                         <th>Level</th>
-                        <th>Module</th>
+                        <th>Source</th>
                         <th>Message</th>
-                        <th>User</th>
-                        <th>IP</th>
+                        <th>User ID</th>
+                        <th>Tenant ID</th>
                     </tr>
                 </thead>
                 <tbody id="logs-tbody">
@@ -66,6 +66,13 @@
 <script>
 let logsOffset = 0;
 const LOGS_LIMIT = 100;
+
+function esc(value) {
+    const s = String(value == null ? '' : value);
+    return s.replace(/[&<>"']/g, function (ch) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[ch];
+    });
+}
 
 async function refreshLogs() {
     logsOffset = 0;
@@ -96,17 +103,17 @@ async function loadLogs(reset) {
             data.logs.forEach(log => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${log.timestamp}</td>
+                    <td>${esc(log.timestamp)}</td>
                     <td><span style="
                         ${log.level === 'ERROR' ? 'color: #ff4444;' : ''}
                         ${log.level === 'WARNING' ? 'color: #ffaa00;' : ''}
                         ${log.level === 'INFO' ? 'color: #00ff41;' : ''}
                         ${log.level === 'DEBUG' ? 'color: #888888;' : ''}
-                        ">${log.level}</span></td>
-                    <td>${log.module}</td>
-                    <td>${log.message}</td>
-                    <td>${log.username || '---'}</td>
-                    <td>${log.ip || '---'}</td>
+                        ">${esc(log.level)}</span></td>
+                    <td>${esc(log.source)}</td>
+                    <td>${esc(log.message)}</td>
+                    <td>${log.user_id == null ? '---' : esc(log.user_id)}</td>
+                    <td>${log.tenant_id == null ? '---' : esc(log.tenant_id)}</td>
                 `;
                 document.getElementById('logs-tbody').appendChild(row);
             });

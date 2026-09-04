@@ -363,6 +363,25 @@ class TestAdminFiles:
         response = client.get('/admin/files')
         assert response.status_code == 200
 
+    def test_file_detail_page(self, client, super_admin_user, db_session):
+        """Admin file detail works across tenants (regression for cross-tenant view)."""
+        from app.shared.models import SurveyFile
+        client.post('/auth/login', json={'username': super_admin_user['username'], 'password': 'admin123'})
+        file = db_session.query(SurveyFile).first()
+        if file is None:
+            f = SurveyFile(tenant_id=1, name='cross_tenant.dtf')
+            db_session.add(f)
+            db_session.commit()
+            file = f
+        response = client.get(f'/admin/files/{file.id}')
+        assert response.status_code == 200
+
+    def test_file_detail_page_missing(self, client, super_admin_user):
+        """Missing file returns 404."""
+        client.post('/auth/login', json={'username': super_admin_user['username'], 'password': 'admin123'})
+        response = client.get('/admin/files/999999')
+        assert response.status_code == 404
+
 
 class TestAdminNavigation:
     """Test admin navigation endpoints."""

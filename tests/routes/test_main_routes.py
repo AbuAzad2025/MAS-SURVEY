@@ -83,6 +83,34 @@ class TestMainRoutes:
         response = client.get('/guide')
         assert response.status_code == 200
 
+    def test_user_guide_escapes_markdown(self, client, monkeypatch):
+        """Guide must escape raw HTML in the markdown (XSS regression)."""
+        evil = "# Title\n\n<script>alert(1)</script>\n\n**bold** pain<img src=x onerror=alert(2)>"
+        import app.routes.main as main_mod
+
+        class FakeIO:
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+            def read(self):
+                return evil
+
+        def fake_open(path, *a, **k):
+            if path.endswith('USER_GUIDE.md'):
+                return FakeIO()
+            import builtins
+            return builtins.open(path, *a, **k)
+
+        monkeypatch.setattr(main_mod, 'open', fake_open, raising=False)
+        response = client.get('/guide')
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert '<script>alert(1)</script>' not in body
+        assert '&lt;script&gt;alert(1)&lt;/script&gt;' in body
+        assert '<img src=x onerror' not in body
+        assert '&lt;img src=x onerror' in body
+
 
 class TestMainRoutesWithFile:
     """Test main routes when file is selected."""

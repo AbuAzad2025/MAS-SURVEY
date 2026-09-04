@@ -99,14 +99,35 @@ async function calculateResection() {
         return;
     }
     
+    if (p1 === p2) {
+        MAS.showAlert('Point 1 and Point 2 must be different', 'error');
+        return;
+    }
+    
     try {
+        const pointsResponse = await fetch('/api/points');
+        if (!pointsResponse.ok) throw new Error('Failed to fetch points');
+        const points = await pointsResponse.json();
+        
+        const point1 = points.find(p => p.no === p1 || p.point_no === p1);
+        const point2 = points.find(p => p.no === p2 || p.point_no === p2);
+        
+        if (!point1) {
+            MAS.showAlert('Point ' + p1 + ' not found', 'error');
+            return;
+        }
+        if (!point2) {
+            MAS.showAlert('Point ' + p2 + ' not found', 'error');
+            return;
+        }
+        
         const response = await fetch('/api/calculate/resection', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 type: '2POINTS',
-                p1: p1,
-                p2: p2,
+                p1: {y: point1.y, x: point1.x},
+                p2: {y: point2.y, x: point2.x},
                 dist1: dist1,
                 dist2: dist2
             })

@@ -20,10 +20,10 @@
 
         <div style="display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #004400; flex-wrap: wrap;">
             <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="font-size: 12px;">[ DASHBOARD ]</a>
-            <a href="/admin/tenants" class="btn" style="font-size: 12px;">[ TENANTS ]</a>
-            <a href="/admin/subscriptions" class="btn" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
-            <a href="/admin/plans" class="btn" style="font-size: 12px;">[ PLANS ]</a>
-            <a href="/admin/activity" class="btn" style="font-size: 12px;">[ ACTIVITY ]</a>
+            <a href="{{ url_for('owner.tenants_page') }}" class="btn" style="font-size: 12px;">[ TENANTS ]</a>
+            <a href="{{ url_for('owner.subscriptions_page') }}" class="btn" style="font-size: 12px;">[ SUBSCRIPTIONS ]</a>
+            <a href="{{ url_for('owner.plans_page') }}" class="btn" style="font-size: 12px;">[ PLANS ]</a>
+            <a href="{{ url_for('activity.activity_page') }}" class="btn" style="font-size: 12px;">[ ACTIVITY ]</a>
         </div>
 
         <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #004400; background: #001a00;">
@@ -106,6 +106,7 @@
 </div>
 
 <script>
+const TENANT_DETAIL_BASE = "{{ url_for('owner.tenant_detail_page', tenant_id=0) }}";
 function showUserMsg(text, isError) {
     var el = document.getElementById('user-action-msg');
     if (!el) return;
@@ -136,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 var t = byOwner[username];
                 if (t && t.id) {
                     var a = document.createElement('a');
-                    a.href = '/admin/tenants/' + t.id;
+                    a.href = TENANT_DETAIL_BASE.replace(/0$/, t.id);
                     a.textContent = t.name || ('Tenant ' + t.id);
                     a.style.color = '#00ff41';
                     cell.textContent = '';
