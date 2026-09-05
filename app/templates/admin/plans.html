@@ -33,22 +33,19 @@
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Description</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Price</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Duration (days)</th>
-                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Max Files</th>
-                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Max Points</th>
-                        <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Max Users</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Active</th>
                         <th style="border:1px solid #004400;padding:8px;background:#001a00;color:#00ff41;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="plans-body">
-                    <tr><td colspan="10" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">Loading...</td></tr>
+                    <tr><td colspan="7" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
 
         <h3 style="color: #00ff41;">Create Plan | خطة جديدة</h3>
         <div class="dos-box">
-            <div class="dos-header">New Plan (use -1 for unlimited | استخدم -1 لغير المحدود)</div>
+            <div class="dos-header">New Plan (empty duration = unlimited | فارغ = غير محدود)</div>
             <form id="plan-create-form">
                 <div class="form-group">
                     <label>Name *</label>
@@ -63,20 +60,8 @@
                     <input type="number" id="plan-price" class="form-control" step="0.01" min="0" value="0" required>
                 </div>
                 <div class="form-group">
-                    <label>Duration (days) *</label>
-                    <input type="number" id="plan-duration" class="form-control" step="1" min="1" required>
-                </div>
-                <div class="form-group">
-                    <label>Max Files (-1 = ∞)</label>
-                    <input type="number" id="plan-max-files" class="form-control" step="1" value="-1">
-                </div>
-                <div class="form-group">
-                    <label>Max Points (-1 = ∞)</label>
-                    <input type="number" id="plan-max-points" class="form-control" step="1" value="-1">
-                </div>
-                <div class="form-group">
-                    <label>Max Users (-1 = ∞)</label>
-                    <input type="number" id="plan-max-users" class="form-control" step="1" value="-1">
+                    <label>Duration (days, empty = unlimited)</label>
+                    <input type="number" id="plan-duration" class="form-control" step="1" min="1">
                 </div>
                 <div class="form-group">
                     <label>
@@ -100,10 +85,6 @@ function esc(v) {
     return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function lim(v) {
-    return (v === -1 || v === '-1') ? '\u221E' : esc(v);
-}
-
 async function loadPlans() {
     const body = document.getElementById('plans-body');
     try {
@@ -113,7 +94,7 @@ async function loadPlans() {
         const list = Array.isArray(data) ? data : (data.plans || []);
         plansCache = list;
         if (!list.length) {
-            body.innerHTML = '<tr><td colspan="10" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">No plans | لا توجد خطط</td></tr>';
+            body.innerHTML = '<tr><td colspan="7" style="border:1px solid #004400;padding:6px;text-align:center;color:#888;">No plans | لا توجد خطط</td></tr>';
             return;
         }
         body.innerHTML = list.map(function(p) {
@@ -129,9 +110,6 @@ async function loadPlans() {
                 '<td style="border:1px solid #004400;padding:6px;">' + esc(p.description) + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + esc(p.price) + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + (p.duration_days === null || p.duration_days === undefined ? '∞' : esc(p.duration_days)) + '</td>' +
-                '<td style="border:1px solid #004400;padding:6px;">' + lim(p.max_files) + '</td>' +
-                '<td style="border:1px solid #004400;padding:6px;">' + lim(p.max_points) + '</td>' +
-                '<td style="border:1px solid #004400;padding:6px;">' + lim(p.max_users) + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;">' + active + '</td>' +
                 '<td style="border:1px solid #004400;padding:6px;white-space:nowrap;">' +
                     '<button onclick="editPlan(' + p.id + ')" class="btn" style="padding:4px 8px;font-size:11px;">Edit</button> ' +
@@ -139,7 +117,7 @@ async function loadPlans() {
                 '</td></tr>';
         }).join('');
     } catch (e) {
-        body.innerHTML = '<tr><td colspan="10" style="border:1px solid #004400;padding:6px;text-align:center;color:#ff4444;">Failed to load | تعذر التحميل</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" style="border:1px solid #004400;padding:6px;text-align:center;color:#ff4444;">Failed to load | تعذر التحميل</td></tr>';
     }
 }
 
@@ -154,20 +132,11 @@ function editPlan(id) {
     if (price === null) return;
     const duration = prompt('Duration in days (empty = unlimited) | المدة بالأيام (فارغ = غير محدود):', p.duration_days === null || p.duration_days === undefined ? '' : p.duration_days);
     if (duration === null) return;
-    const maxFiles = prompt('Max Files (-1 = unlimited) | أقصى ملفات:', p.max_files);
-    if (maxFiles === null) return;
-    const maxPoints = prompt('Max Points (-1 = unlimited) | أقصى نقاط:', p.max_points);
-    if (maxPoints === null) return;
-    const maxUsers = prompt('Max Users (-1 = unlimited) | أقصى مستخدمين:', p.max_users);
-    if (maxUsers === null) return;
     const data = {
         name: name,
         description: description,
         price: parseFloat(price),
-        duration_days: duration.trim() === '' ? null : parseInt(duration, 10),
-        max_files: parseInt(maxFiles, 10),
-        max_points: parseInt(maxPoints, 10),
-        max_users: parseInt(maxUsers, 10)
+        duration_days: duration.trim() === '' ? null : parseInt(duration, 10)
     };
     fetch('/admin/api/plans/' + id, {
         method: 'PUT',
@@ -209,9 +178,6 @@ document.getElementById('plan-create-form').addEventListener('submit', async fun
         description: document.getElementById('plan-description').value || undefined,
         price: parseFloat(document.getElementById('plan-price').value),
         duration_days: (function() { var v = document.getElementById('plan-duration').value; return v.trim() === '' ? null : parseInt(v, 10); })(),
-        max_files: parseInt(document.getElementById('plan-max-files').value, 10),
-        max_points: parseInt(document.getElementById('plan-max-points').value, 10),
-        max_users: parseInt(document.getElementById('plan-max-users').value, 10),
         is_active: document.getElementById('plan-is-active').checked
     };
     try {

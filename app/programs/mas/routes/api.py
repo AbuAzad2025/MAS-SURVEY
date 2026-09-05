@@ -11,8 +11,7 @@ from flask import Blueprint, request, jsonify, session
 from app.services.calculator import CalculatorService, SurveyingError
 from app.shared.models import db, SurveyFile, SurveyPoint, Settings
 from app.shared.middleware import (
-    login_required, get_current_user, get_current_tenant,
-    get_plan_limits, tenant_block_reason,
+    login_required, get_current_tenant, tenant_block_reason,
 )
 
 
@@ -75,10 +74,12 @@ def _is_blocked_403(tenant):
     reason = tenant_block_reason(tenant)
     if reason is None:
         return None
-    msg = ('Account suspended, contact platform owner'
-           if reason == 'suspended'
-           else 'Subscription expired, please renew')
-    return jsonify({'error': msg}), 403
+    messages = {
+        'suspended': 'Account suspended, contact platform owner',
+        'pending': 'Subscription pending owner approval',
+    }
+    return jsonify({'error': messages.get(reason,
+                   'Subscription expired, please renew')}), 403
 
 
 # --- current file ------------------------------------------------------
@@ -142,19 +143,6 @@ def files_list():
         blocked = _is_blocked_403(tenant)
         if blocked:
             return blocked
-        try:
-            limits = get_plan_limits(getattr(tenant, 'plan', 'none'))
-            max_files = limits.get('max_files', 5)
-        except Exception:
-            max_files = 5
-        if max_files is not None and max_files >= 0:
-            try:
-                files_count = SurveyFile.query.filter_by(
-                    tenant_id=tenant_id).count()
-            except Exception:
-                files_count = 0
-            if files_count >= max_files:
-                return _error('Plan file limit reached', 403)
         data = _json_body()
         name = str(data.get('name') or '').strip()
         if not name:
@@ -208,21 +196,6 @@ def upload_file():
     if size < 50:
         return _error('File is too small or corrupted')
 
-    # Plan limits before parsing to avoid wasted work.
-    try:
-        limits = get_plan_limits(getattr(tenant, 'plan', 'none'))
-        max_files = limits.get('max_files', 5)
-        max_points = limits.get('max_points', 500)
-    except Exception:
-        max_files = max_points = -1
-    if max_files is not None and max_files >= 0:
-        try:
-            files_count = SurveyFile.query.filter_by(tenant_id=tenant_id).count()
-        except Exception:
-            files_count = 0
-        if files_count >= max_files:
-            return _error('Plan file limit reached', 403)
-
     try:
         content = file.read()
         header_check = content[:15]
@@ -231,9 +204,6 @@ def upload_file():
         points = parse_dtf_file(content)
         if not points:
             return _error('No valid points found in file')
-
-        if max_points is not None and max_points >= 0 and len(points) > max_points:
-            return _error(f'Plan points limit ({max_points}) exceeded', 403)
 
         base_name = os.path.splitext(filename)[0]
         safe_name = re.sub(r'[^\w\s\-]', '', base_name)[:50] or 'uploaded_file'
@@ -399,30 +369,6 @@ def save_points():
                        'code': str(p.get('code', ''))[:50]})
     new_points = cleaned
     tenant_id = tenant.id
-
-    # Plan points cap: total_after = existing count + new unique point_nos
-    # not already present. -1 (or negative) means unlimited.
-    try:
-        limits = get_plan_limits(getattr(tenant, 'plan', 'none'))
-        max_points = limits.get('max_points', 500)
-    except Exception:
-        max_points = 500
-    if max_points is not None and max_points >= 0:
-        try:
-            existing_count = SurveyPoint.query.filter_by(file_id=fid).count()
-        except Exception:
-            existing_count = 0
-        try:
-            existing_rows = SurveyPoint.query.filter_by(
-                file_id=fid).with_entities(SurveyPoint.point_no).all()
-            existing_nos = {r[0] for r in existing_rows}
-        except Exception:
-            existing_nos = set()
-        incoming_nos = {p['no'] for p in new_points}
-        new_unique = len(incoming_nos - existing_nos)
-        total_after = existing_count + new_unique
-        if total_after > max_points:
-            return _error('Plan points limit reached', 403)
 
     # Append/upsert strategy (back-compat): insert new numbers, update existing.
     for p in new_points:

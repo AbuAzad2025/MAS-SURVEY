@@ -62,6 +62,11 @@ def test_register_full_flow_lands_in_waiting(page, e2e_server):
 
     admin_page.goto(e2e_server + '/admin/subscriptions')
     admin_page.wait_for_selector('#pending-body', timeout=5000)
+    admin_page.locator('#pending-body').wait_for(
+        state='visible', timeout=5000)
+    # Wait until the new signup is actually rendered (pending list is fetched async).
+    admin_page.locator('#pending-body').filter(
+        has_text=username).wait_for(state='attached', timeout=5000)
     html = admin_page.content()
     assert username in html, "new signup not visible in owner queue"
     assert 'WhatsApp' in html, "owner queue should show contact WhatsApp"

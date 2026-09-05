@@ -8,7 +8,7 @@ from flask import Blueprint, render_template, redirect, url_for
 import os
 
 from app.shared.middleware import (
-    login_required, get_current_user, get_current_tenant, tenant_block_reason,
+    login_required, get_current_tenant, tenant_block_reason,
     SUPER_ADMIN_INFO,
 )
 
@@ -18,9 +18,7 @@ landing_bp = Blueprint('landing', __name__)
 @landing_bp.route('/')
 def index():
     """Landing page: list of all programs."""
-    return render_template('main_menu.html',
-                           company='Alrafideen Surveying Office',
-                           phone='0562150193')
+    return render_template('main_menu.html')
 
 
 @landing_bp.route('/waiting')

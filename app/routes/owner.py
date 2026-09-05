@@ -7,9 +7,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify, render_template, session
 from sqlalchemy import func
 
-from app.shared.models import (
-    db, User, Tenant, TenantUser, SurveyFile, SurveyPoint,
-)
+from app.shared.models import db, User, Tenant, TenantUser, SurveyFile
 from app.shared.models.billing import Plan, Subscription
 from app.shared.middleware import super_admin_required, login_required, get_current_user
 
@@ -141,9 +139,6 @@ def _plan_to_dict(plan) -> dict:
         'description': getattr(plan, 'description', None),
         'price': getattr(plan, 'price', None),
         'duration_days': getattr(plan, 'duration_days', None),
-        'max_files': getattr(plan, 'max_files', None),
-        'max_points': getattr(plan, 'max_points', None),
-        'max_users': getattr(plan, 'max_users', None),
         'is_active': bool(getattr(plan, 'is_active', True)),
         'created_at': _iso(getattr(plan, 'created_at', None)),
     }
@@ -443,7 +438,9 @@ def api_approve_subscription(sub_id):
         try:
             duration = int(raw_duration)
         except Exception:
-            duration = 30
+            duration = None
+        if duration is None or duration <= 0:
+            return jsonify({'error': 'Plan duration must be positive or unlimited'}), 400
         from datetime import timedelta
         end = now + timedelta(days=duration)
     sub.status = 'active'
@@ -550,20 +547,11 @@ def api_create_plan():
             duration_days = int(raw_duration)
         except Exception:
             return jsonify({'error': 'Invalid duration_days'}), 400
+        if duration_days <= 0:
+            return jsonify({'error': 'duration_days must be positive'}), 400
     if Plan.query.filter_by(name=name).first():
         return jsonify({'error': 'Plan name already exists'}), 400
 
-    def _int_or_default(v, default=-1):
-        if v is None or (isinstance(v, str) and not v.strip()):
-            return default
-        try:
-            return int(v)
-        except Exception:
-            return None
-
-    for field in ('max_files', 'max_points', 'max_users'):
-        if field in data and _int_or_default(data.get(field)) is None:
-            return jsonify({'error': f'Invalid {field}'}), 400
     is_active = True
     if 'is_active' in data:
         is_active = _strict_bool(data.get('is_active'))
@@ -574,9 +562,6 @@ def api_create_plan():
         name=name,
         price=price,
         duration_days=duration_days,
-        max_files=_int_or_default(data.get('max_files'), -1),
-        max_points=_int_or_default(data.get('max_points'), -1),
-        max_users=_int_or_default(data.get('max_users'), -1),
         description=data.get('description'),
     )
     plan.is_active = is_active
@@ -615,12 +600,8 @@ def api_update_plan(plan_id):
                 plan.duration_days = int(raw)
             except Exception:
                 return jsonify({'error': 'Invalid duration_days'}), 400
-    for field in ('max_files', 'max_points', 'max_users'):
-        if field in data:
-            try:
-                setattr(plan, field, int(data.get(field)))
-            except Exception:
-                return jsonify({'error': f'Invalid {field}'}), 400
+            if plan.duration_days <= 0:
+                return jsonify({'error': 'duration_days must be positive'}), 400
     if 'description' in data:
         plan.description = data.get('description')
     if 'is_active' in data:

@@ -14,9 +14,6 @@ class Plan(db.Model):
     description = db.Column(db.Text)
     price = db.Column(db.Float, default=0.0)
     duration_days = db.Column(db.Integer, default=30)
-    max_files = db.Column(db.Integer, default=5)
-    max_points = db.Column(db.Integer, default=500)
-    max_users = db.Column(db.Integer, default=1)  # -1 = unlimited
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -57,27 +54,20 @@ class ActivityLog(db.Model):
 
 #: Subscription durations. One subscription covers ALL platform programs
 #: (MAS, INHERITANCE, ...). No tiers, no payment - manual approval only.
-#: duration_days=None means never expires. All caps are -1 (unlimited).
-DURATIONS = ('weekly', 'monthly', 'yearly', 'unlimited')
-
-#: Legacy tier names from the first version - deactivated on sight.
+#: duration_days=None means never expires. Limits are all -1 (unlimited).
 LEGACY_PLANS = ('free', 'pro', 'enterprise')
 
 
 def seed_default_plans():
     defaults = [
         dict(name='weekly', description='Weekly subscription - all programs',
-             price=0, duration_days=7,
-             max_files=-1, max_points=-1, max_users=-1),
+             price=0, duration_days=7),
         dict(name='monthly', description='Monthly subscription - all programs',
-             price=0, duration_days=30,
-             max_files=-1, max_points=-1, max_users=-1),
+             price=0, duration_days=30),
         dict(name='yearly', description='Yearly subscription - all programs',
-             price=0, duration_days=365,
-             max_files=-1, max_points=-1, max_users=-1),
+             price=0, duration_days=365),
         dict(name='unlimited', description='Unlimited subscription - all programs',
-             price=0, duration_days=None,
-             max_files=-1, max_points=-1, max_users=-1),
+             price=0, duration_days=None),
     ]
     try:
         existing = {p.name for p in Plan.query.with_entities(Plan.name).all()}

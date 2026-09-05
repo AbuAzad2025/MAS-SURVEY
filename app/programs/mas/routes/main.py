@@ -165,12 +165,10 @@ def plan():
 def print_preview():
     f = _get_current_file_info()
     points = _get_current_points()
-    settings = _get_settings()
+    phone = _get_settings().get('phone')
     return render_template(
         'print_preview.html',
         file_info=f.to_dict() if f else None,
         points=[p.to_dict() for p in points],
-        settings=settings,
-        company=settings.get('company_name', 'Alrafideen Surveying Office'),
-        phone=settings.get('phone', '0562150193'),
+        phone=phone,
     )

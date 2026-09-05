@@ -8,7 +8,7 @@ from flask import (Blueprint, render_template, session, redirect, url_for,
 from app.shared.models import db, SurveyFile, SurveyPoint
 from app.shared.middleware import (
     login_required, get_current_tenant,
-    get_plan_limits, tenant_block_reason,
+    tenant_block_reason,
 )
 
 # __file__ = app/programs/mas/routes/files.py
@@ -54,24 +54,12 @@ def new_file():
         if reason == 'suspended':
             return render_template(
                 'error.html', message='Account suspended, contact platform owner'), 403
+        if reason == 'pending':
+            return render_template(
+                'error.html', message='Subscription pending owner approval'), 403
         if reason in ('expired', 'no_tenant'):
             return render_template(
                 'error.html', message='Subscription expired, please renew'), 403
-
-        try:
-            limits = get_plan_limits(getattr(tenant, 'plan', 'none'))
-            max_files = limits.get('max_files', 5)
-        except Exception:
-            max_files = 5
-        if max_files is not None and max_files >= 0:
-            try:
-                files_count = SurveyFile.query.filter_by(
-                    tenant_id=tenant.id).count()
-            except Exception:
-                files_count = 0
-            if files_count >= max_files:
-                return render_template(
-                    'error.html', message='Plan file limit reached')
 
         existing = SurveyFile.query.filter_by(
             tenant_id=tenant.id, name=name

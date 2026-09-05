@@ -3,7 +3,6 @@ Super Admin panel routes.
 PostgreSQL + SQLAlchemy + multi-tenant.
 """
 import sys
-import os
 from flask import Blueprint, request, jsonify, session, render_template
 
 from app.shared.models import db, User, Role, Tenant, SurveyFile, SurveyPoint, SystemLog
@@ -220,6 +219,8 @@ def api_update_user(user_id):
                 if coerced is None:
                     return jsonify({'error': f'Invalid boolean for {field}'}), 400
                 value = coerced
+            elif field in ('email', 'phone', 'full_name') and isinstance(value, str):
+                value = value.strip() or None
             setattr(user, field, value)
     db.session.commit()
     return jsonify({'status': 'ok', 'user': user.to_dict()})

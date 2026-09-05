@@ -330,6 +330,88 @@ class TestOwnerTenants:
 
 # --- TestOwnerSubscriptions ----------------------------------------------------
 
+# --- TestOwnerDataIntegrity -----------------------------------------------------
+
+class TestOwnerDataIntegrity:
+    def test_pending_sub_reason_is_pending(self, client, app, super_admin_user):
+        """B1: tenant with a pending subscription must be 'pending', not 'expired'."""
+        uname, tid, monthly_id, sid = TestOwnerSubscriptions()._new_tenant_with_pending(
+            client, app, super_admin_user, "ownb1")
+        try:
+            with app.app_context():
+                from app.shared.models import Tenant
+                from app.shared.middleware import tenant_block_reason
+                tenant = Tenant.query.get(tid)
+                assert tenant is not None
+                assert tenant_block_reason(tenant) == 'pending', \
+                    f"pending sub tenant should report 'pending', got {tenant_block_reason(tenant)}"
+        finally:
+            _login_admin(client, super_admin_user)
+
+    def test_empty_email_stored_as_null(self, client, app, super_admin_user):
+        """B3: '' email via admin PUT must normalize to NULL, not collide on unique."""
+        _login_admin(client, super_admin_user)
+        uid1 = _create_user(client, _uniq("ownmail")).get("id")
+        uid2 = _create_user(client, _uniq("ownmail")).get("id")
+        try:
+            pu1 = client.put(f"/admin/api/users/{uid1}", json={"email": ""})
+            if pu1.status_code == 404 and _is_no_route(pu1):
+                pytest.xfail("contract gap: PUT /admin/api/users/<id> missing")
+            assert pu1.status_code == 200, f"update1: {pu1.status_code} {pu1.data[:300]}"
+            pu2 = client.put(f"/admin/api/users/{uid2}", json={"email": ""})
+            assert pu2.status_code == 200, \
+                f"second '' email should normalize to NULL (unique collision), got {pu2.status_code} {pu2.data[:300]}"
+            with app.app_context():
+                from app.shared.models import User
+                for uid in (uid1, uid2):
+                    u = User.query.get(uid)
+                    assert u.email is None, f"user {uid} email not NULL after '' submit: {u.email!r}"
+        finally:
+            _login_admin(client, super_admin_user)
+
+    def test_plan_duration_zero_rejected_at_approve(self, client, app, super_admin_user):
+        """B4: approving with a plan that has duration_days=0 must be rejected."""
+        _login_admin(client, super_admin_user)
+        uname = _uniq("ownb4")
+        _create_user(client, uname)
+        tid = _tenant_id_for_user(client, app, uname)
+        bad_plan_id = None
+        try:
+            r = client.post("/admin/api/plans", json={
+                "name": _uniq("badplan"), "price": 5, "duration_days": 0,
+            })
+            assert r.status_code == 400, \
+                f"creating plan with duration_days=0 should be 400, got {r.status_code} {r.data[:300]}"
+            # insert degenerate plan directly (bypassing API validation)
+            with app.app_context():
+                from app.shared.models import Plan
+                from app.shared.models import db as _db
+                bad = Plan(name=_uniq("badplan"), price=5, duration_days=0, is_active=True)
+                _db.session.add(bad)
+                _db.session.flush()
+                bad_plan_id = bad.id
+                _db.session.commit()
+            r = client.post("/admin/api/subscriptions",
+                            json={"tenant_id": tid, "plan_id": bad_plan_id})
+            assert r.status_code == 200, f"create sub: {r.status_code} {r.data[:400]}"
+            sid = _extract_sub_id(r.get_json())
+            rr = _approve(client, sid)
+            assert rr.status_code == 400, \
+                f"approve with 0-duration plan should fail: {rr.status_code} {rr.data[:300]}"
+        finally:
+            try:
+                if bad_plan_id:
+                    with app.app_context():
+                        from app.shared.models import Plan, Subscription
+                        from app.shared.models import db as _db
+                        Subscription.query.filter_by(plan_id=bad_plan_id).delete()
+                        Plan.query.filter_by(id=bad_plan_id).delete()
+                        _db.session.commit()
+            except Exception:
+                pass
+            _login_admin(client, super_admin_user)
+
+
 class TestOwnerSubscriptions:
     def _new_tenant_with_pending(self, client, app, super_admin_user, prefix):
         _login_admin(client, super_admin_user)
@@ -447,6 +529,49 @@ class TestOwnerSubscriptions:
 # --- TestOwnerPlans --------------------------------------------------------------
 
 class TestOwnerPlans:
+    def test_create_rejects_zero_or_negative_duration(self, client, super_admin_user):
+        """B4: duration_days <= 0 must be rejected (would expire instantly)."""
+        _login_admin(client, super_admin_user)
+        for bad in (0, -1, -30):
+            pname = _uniq("ownplanbad")
+            r = client.post("/admin/api/plans", json={
+                "name": pname, "price": 10, "duration_days": bad,
+            })
+            if r.status_code == 404 and _is_no_route(r):
+                pytest.xfail("contract gap: POST /admin/api/plans missing")
+            assert r.status_code == 400, \
+                f"duration_days={bad} should be 400, got {r.status_code} {r.data[:300]}"
+
+    def test_update_rejects_zero_duration(self, client, super_admin_user):
+        """B4: PUT with duration_days=0 must be rejected."""
+        _login_admin(client, super_admin_user)
+        pname = _uniq("ownplanupd")
+        r = client.post("/admin/api/plans", json={
+            "name": pname, "price": 10, "duration_days": 30,
+        })
+        assert r.status_code in (200, 201), f"create: {r.status_code} {r.data[:300]}"
+        pid = r.get_json().get("plan", r.get_json()).get("id")
+        try:
+            u = client.put(f"/admin/api/plans/{pid}", json={"duration_days": 0})
+            if u.status_code == 404 and _is_no_route(u):
+                pytest.xfail("contract gap: PUT /admin/api/plans/<id> missing")
+            assert u.status_code == 400, \
+                f"update to duration_days=0 should be 400, got {u.status_code} {u.data[:300]}"
+        finally:
+            try:
+                client.delete(f"/admin/api/plans/{pid}")
+            except Exception:
+                pass
+            _login_admin(client, super_admin_user)
+
+    def test_plans_no_limits_fields(self, client):
+        """Hollow max_* fields removed: plan payload carries no limits."""
+        plans = _plans_list(client)
+        for p in plans:
+            assert "max_files" not in p, f"max_files leaked into plan payload: {p}"
+            assert "max_points" not in p, f"max_points leaked into plan payload: {p}"
+            assert "max_users" not in p, f"max_users leaked into plan payload: {p}"
+
     def test_list_has_seeded_plans(self, client):
         plans = _plans_list(client)
         names = {str(p.get("name", "")).lower() for p in plans}
