@@ -43,9 +43,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Syntax check
+        id: syntax-check
         run: |
           python -m compileall -q app/ tests/ config.py run.py
       - name: Import sanity
+        id: import-sanity
         run: |
           python scripts/import_check.py
       - name: Report
@@ -68,6 +70,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Unit tests
+        id: unit-tests
         run: |
           pytest tests/test_calculator.py -q -p no:cacheprovider --no-cov
       - name: Report
@@ -104,6 +107,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Backend tests
+        id: backend-tests
         env:
           DB_PASSWORD: ${{ env.DB_PASSWORD }}
         run: |
@@ -137,6 +141,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Frontend inventory
+        id: static-inventory
         run: |
           mkdir -p artifacts
           {
@@ -208,6 +213,7 @@ jobs:
         run: |
           playwright install chromium --with-deps || python -m playwright install chromium
       - name: E2E tests
+        id: e2e-tests
         env:
           DB_PASSWORD: ${{ env.DB_PASSWORD }}
         run: |
@@ -259,6 +265,7 @@ jobs:
           playwright install chromium --with-deps || python -m playwright install chromium
 
       - name: Full coverage
+        id: full-coverage
         env:
           DB_PASSWORD: ${{ env.DB_PASSWORD }}
         run: |
